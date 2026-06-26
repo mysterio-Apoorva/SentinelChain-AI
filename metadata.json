@@ -1,6 +1,6 @@
 {
-  "name": "SentinelChain AI",
-  "description": "AI-Powered Supply Chain Risk Intelligence Platform leveraging advanced predictive analytics and autonomous mitigation recommendations.",
+  "name": "",
+  "description": "",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
