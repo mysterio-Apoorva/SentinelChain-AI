@@ -10,6 +10,12 @@
 </p>
 
 <p align="center">
+  <a href="https://sentinel-chain-ai.onrender.com/" target="_blank">
+    <img src="https://img.shields.io/badge/🌐%20Live%20Platform-Launch%20Interactive%20Demo-0284c7?style=for-the-badge&logo=render&logoColor=white" alt="Live Demo" />
+  </a>
+</p>
+
+<p align="center">
   <a href="https://github.com/mysterio-Apoorva/SentinelChain-AI/stargazers"><img src="https://img.shields.io/github/stars/mysterio-Apoorva/SentinelChain-AI?style=for-the-badge&color=38bdf8" alt="GitHub Stars" /></a>
   <a href="https://github.com/mysterio-Apoorva/SentinelChain-AI/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-emerald?style=for-the-badge" alt="License" /></a>
   <a href="https://aws.amazon.com/bedrock/"><img src="https://img.shields.io/badge/AWS-Bedrock%20AI-orange?style=for-the-badge&logo=amazon-aws" alt="AWS Bedrock" /></a>
@@ -20,6 +26,7 @@
 </p>
 
 <p align="center">
+  <a href="https://sentinel-chain-ai.onrender.com/"><strong>🚀 Live Demo</strong></a> •
   <a href="#-what-it-does">What It Does</a> •
   <a href="#-sentinelchain-ai-vs-traditional-solutions">Comparison</a> •
   <a href="#-system-architecture">Architecture</a> •
