@@ -5,6 +5,7 @@ import { SNSClient } from '@aws-sdk/client-sns';
 import { LambdaClient } from '@aws-sdk/client-lambda';
 import { analyzeDisruption, dispatchNotification, dispatchOperation, getPerformanceMetrics, requiredText, validateAnalysis } from '../api/_lib/sentinel';
 import { handleApi } from '../api/_lib/handler';
+import { AdapterError } from '../api/_lib/demoService';
 const analysis = { headline: 'Reported port closure', category: 'Port', severity: 'High', probability: 80, affectedNodes: ['Reported port'], impactInventory: -20, impactDeliveries: 'Estimated delay', impactCost: 15, reasoning: ['Closure','Delay','Stock depletion'], recommendations: [{title:'Review reroute',reduction:20,cost:'Unknown',description:'Verify alternate capacity'},{title:'Review stock',reduction:10,cost:'Unknown',description:'Check stock'}] };
 test('input and AI schema validation reject malformed and unsafe values', () => {
   for (const input of [null, '', '   ', 22, 'x'.repeat(12001)]) assert.throws(() => requiredText(input,'Report'));
@@ -14,13 +15,23 @@ test('input and AI schema validation reject malformed and unsafe values', () => 
   assert.equal(validateAnalysis(analysis).headline, analysis.headline);
 });
 test('unconfigured services never return fabricated success', async () => {
-  const keys = ['BEDROCK_MODEL_ID','SNS_EMAIL_TOPIC_ARN','OPERATIONS_WEBHOOK_URL'];
+  const keys = ['BEDROCK_MODEL_ID','SNS_EMAIL_TOPIC_ARN','OPERATIONS_WEBHOOK_URL','DEMO_ADAPTER_FUNCTION_NAME'];
   keys.forEach(k => delete process.env[k]);
   await assert.rejects(analyzeDisruption('Port closure'), /not configured/);
   await assert.rejects(dispatchNotification('Email','Test'), /not configured/);
   await assert.rejects(dispatchNotification('unknown','Test'), /Unsupported/);
   await assert.rejects(dispatchOperation({type:'playbook',target:'Reroute',idempotencyKey:'test'},'user'), /not configured/);
   assert.equal(getPerformanceMetrics().awsLambdaLatencyMs, null);
+});
+
+test('monthly quota blocks the model before any AI call', async () => {
+  process.env.BEDROCK_MODEL_ID = 'test'; process.env.DEMO_ADAPTER_FUNCTION_NAME = 'adapter';
+  const ai = mock.method(BedrockRuntimeClient.prototype, 'send', async () => { throw new Error('Must not be called'); });
+  const lambda = mock.method(LambdaClient.prototype, 'send', async () => ({ Payload: Buffer.from(JSON.stringify({error:'Monthly limit reached',statusCode:429})) }));
+  try {
+    await assert.rejects(analyzeDisruption('Reported port closure','user'), (error: unknown) => error instanceof AdapterError && error.status === 429);
+    assert.equal(ai.mock.callCount(),0);
+  } finally { ai.mock.restore(); lambda.mock.restore(); delete process.env.BEDROCK_MODEL_ID; delete process.env.DEMO_ADAPTER_FUNCTION_NAME; }
 });
 test('valid AI result survives downstream Lambda failure', async () => {
   process.env.BEDROCK_MODEL_ID = 'test'; process.env.LAMBDA_FUNCTION_NAME = 'test';

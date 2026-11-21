@@ -1,4 +1,5 @@
-﻿import 'dotenv/config';
+import { invokeDemoAdapter } from './demoService';
+import 'dotenv/config';
 import { randomUUID } from 'node:crypto';
 import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
@@ -32,6 +33,7 @@ export function validateAnalysis(value: unknown): DisruptionAnalysis {
 }
 async function converse(system: string, prompt: string) {
   if (!process.env.BEDROCK_MODEL_ID) throw new ServiceError(503, 'Amazon Bedrock is not configured. Set BEDROCK_MODEL_ID and AWS credentials on the server.');
+  if (process.env.DEMO_ADAPTER_FUNCTION_NAME) await invokeDemoAdapter('quota');
   try {
     const response = await new BedrockRuntimeClient({ region: process.env.AWS_REGION, maxAttempts: 2 }).send(new ConverseCommand({
       modelId: process.env.BEDROCK_MODEL_ID,
@@ -74,7 +76,9 @@ export function getPerformanceMetrics() {
     uptimeSeconds: Math.round(process.uptime()), serverRamMb: `${Math.round(process.memoryUsage().heapUsed / 1048576)} MB`,
     awsLambdaLatencyMs: null, bedrockTokenThroughput: null, cloudWatchAlarms: null,
     activeIngestStreams: 0, dynamoDbQueriesPerSec: null, apiGatewayLatencyMs: null,
-    services: Object.fromEntries(['BEDROCK_MODEL_ID','DYNAMODB_TABLE','EVENT_BUS_NAME','LAMBDA_FUNCTION_NAME','OPERATIONS_WEBHOOK_URL','DATA_SOURCE_URL'].map(k => [k, process.env[k] ? 'configured_not_verified' : 'not_configured'])),
+    dataMode: process.env.DEMO_ADAPTER_FUNCTION_NAME ? 'demo' : 'external',
+    notificationChannels: ['Email','SMS','Slack','PagerDuty'].filter(channel => process.env[`SNS_${channel.toUpperCase()}_TOPIC_ARN`]),
+    services: Object.fromEntries(['BEDROCK_MODEL_ID','DYNAMODB_TABLE','EVENT_BUS_NAME','LAMBDA_FUNCTION_NAME','OPERATIONS_WEBHOOK_URL','DATA_SOURCE_URL','DEMO_ADAPTER_FUNCTION_NAME'].map(k => [k, process.env[k] ? 'configured_not_verified' : 'not_configured'])),
   };
 }
 export async function dispatchNotification(channel: string, message: string, severity?: string) {
@@ -94,6 +98,7 @@ export async function dispatchOperation(body: any, userId: string) {
   if (!['playbook','supplier','inventory'].includes(type)) throw new ServiceError(400, 'Unsupported action type.');
   const target = requiredText(body?.target, 'Action target', 300);
   const id = requiredText(body?.idempotencyKey, 'Idempotency key', 100);
+  if (process.env.DEMO_ADAPTER_FUNCTION_NAME) return invokeDemoAdapter('operation', { body, userId });
   if (!process.env.OPERATIONS_WEBHOOK_URL) throw new ServiceError(503, 'Operations connector is not configured. No operational change was made.');
   const response = await fetch(process.env.OPERATIONS_WEBHOOK_URL, {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': id, ...(process.env.OPERATIONS_WEBHOOK_TOKEN ? { Authorization: `Bearer ${process.env.OPERATIONS_WEBHOOK_TOKEN}` } : {}) },

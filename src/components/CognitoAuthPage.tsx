@@ -414,13 +414,14 @@ export default function CognitoAuthPage({ onLoginSuccess }: CognitoAuthPageProps
 
                 {/* Footer action to registration */}
                 <div className="pt-4 border-t border-slate-850/60 flex flex-col items-center space-y-1">
-                  <span className="text-[10px] text-slate-500">Need corporate credentials?</span>
+                  <span className="text-[10px] text-slate-500">{import.meta.env.VITE_ALLOW_SIGNUP === 'false' ? 'Invite-only workspace. Contact your administrator for an account.' : 'Need corporate credentials?'}</span>
                   <button
                     type="button"
                     onClick={() => switchMode("signup")}
+                    disabled={import.meta.env.VITE_ALLOW_SIGNUP === 'false'}
                     className="text-xs font-bold text-sky-400 hover:text-sky-300 font-sans"
                   >
-                    Create Account
+                    {import.meta.env.VITE_ALLOW_SIGNUP === 'false' ? 'Accounts managed by administrator' : 'Create Account'}
                   </button>
                 </div>
               </motion.div>

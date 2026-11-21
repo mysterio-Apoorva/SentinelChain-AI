@@ -1,5 +1,24 @@
 ﻿import { test, expect } from '@playwright/test';
 const sections = ['dashboard','live-risk-map','global-threat-feed','active-disruptions','incident-details','live-shipment-tracking','delayed-shipments','supplier-health','alternative-suppliers','recovery-actions','route-optimization','inventory-suggestions','risk-trends','business-impact','reports','voice-assistant','ai-chat','notifications','profile','cognito-login','team-roles'];
+
+test('persisted demo supplier activation can be toggled and survives reload', async ({ page }) => {
+  let active = true;
+  await page.route('**/api/**', async route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith('/operations')) {
+      active = route.request().postDataJSON().parameters.activate;
+      return route.fulfill({json:{status:'completed',mode:'demo'}});
+    }
+    return route.fulfill({json:path.endsWith('/data') ? {mode:'demo',backups:[{target:'Demo supplier',backup:'Demo backup',region:'Hanoi',reliability:'92%',premium:'1.1x',onboarding:'Ready',active}]} : []});
+  });
+  await page.goto('http://localhost:3000/tests/ui.html#alternative-suppliers');
+  await expect(page.getByText('Demo workspace:',{exact:false})).toBeVisible();
+  await page.getByRole('button',{name:'ACTIVE STANDBY',exact:true}).click();
+  await expect(page.getByRole('button',{name:'ACTIVATE STANDBY',exact:true})).toBeVisible();
+  expect(active).toBe(false);
+  await page.reload();
+  await expect(page.getByRole('button',{name:'ACTIVATE STANDBY',exact:true})).toBeVisible();
+});
 test('all 21 screens render at desktop and mobile widths with unavailable services', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));

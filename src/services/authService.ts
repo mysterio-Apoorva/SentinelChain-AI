@@ -27,7 +27,8 @@ interface LocalProfile {
 async function verifiedRole(): Promise<CognitoRole> {
   const session = await fetchAuthSession();
   const groups = session.tokens?.idToken?.payload['cognito:groups'];
-  return ['Admin', 'Supply Chain Manager', 'Logistics Executive', 'Analyst'].find(role => Array.isArray(groups) && groups.includes(role)) as CognitoRole || 'Analyst';
+  const roles: [string, CognitoRole][] = [['Admin', 'Admin'], ['SupplyChainManager', 'Supply Chain Manager'], ['LogisticsExecutive', 'Logistics Executive'], ['Analyst', 'Analyst']];
+  return roles.find(([group]) => Array.isArray(groups) && groups.includes(group))?.[1] || 'Analyst';
 }
 const profileKey = (email: string): string =>
   `${PROFILE_KEY_PREFIX}${email.toLowerCase()}`;

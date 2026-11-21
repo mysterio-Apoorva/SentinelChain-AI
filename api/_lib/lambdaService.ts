@@ -10,7 +10,7 @@ const lambda = new LambdaClient({
 export async function invokeAnalysisLambda(payload: any) {
   const command = new InvokeCommand({
     FunctionName: process.env.LAMBDA_FUNCTION_NAME,
-    Payload: Buffer.from(JSON.stringify(payload)),
+    Payload: Buffer.from(JSON.stringify({ action: "audit", ...payload })),
   });
 
   const response = await lambda.send(command);
@@ -20,7 +20,7 @@ export async function invokeAnalysisLambda(payload: any) {
     throw new Error("Lambda returned no response");
   }
 
-  return JSON.parse(
-    Buffer.from(response.Payload).toString()
-  );
+  const result = JSON.parse(Buffer.from(response.Payload).toString());
+  if (result.error) throw new Error(result.error);
+  return result;
 }

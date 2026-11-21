@@ -1,4 +1,4 @@
-﻿import { fetchAuthSession } from 'aws-amplify/auth';
+import { fetchAuthSession } from 'aws-amplify/auth';
 export async function apiRequest<T = any>(route: string, body?: unknown): Promise<T> {
   const session = await fetchAuthSession();
   const token = session.tokens?.idToken?.toString();
@@ -15,5 +15,8 @@ export async function runOperation(type: string, target: string, parameters: unk
   const key = `sentinel_action_${JSON.stringify({type,target,parameters})}`;
   const idempotencyKey = sessionStorage.getItem(key) || crypto.randomUUID();
   sessionStorage.setItem(key, idempotencyKey);
-  return apiRequest('operations', { type, target, parameters, idempotencyKey });
+  const result = await apiRequest('operations', { type, target, parameters, idempotencyKey });
+  window.dispatchEvent(new Event('sentinel:data-changed'));
+  sessionStorage.removeItem(key);
+  return result;
 }

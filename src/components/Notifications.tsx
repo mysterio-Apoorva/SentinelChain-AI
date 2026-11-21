@@ -1,5 +1,5 @@
 import { apiRequest } from "../services/api";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { BellRing, Mail, MessageSquare, ShieldCheck, Send, RefreshCw, AlertCircle, Radio, Sparkles } from "lucide-react";
 
@@ -12,7 +12,15 @@ interface SnsAlert {
 }
 
 export default function Notifications() {
-  const [channel, setChannel] = useState<"Slack" | "SMS" | "Email" | "PagerDuty">("Slack");
+  const [channel, setChannel] = useState<"Slack" | "SMS" | "Email" | "PagerDuty">("Email");
+  const [channels, setChannels] = useState<string[] | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    apiRequest('performance-metrics').then(data => {
+      if (mounted && Array.isArray(data.notificationChannels)) setChannels(data.notificationChannels);
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, []);
   const [customMsg, setCustomMsg] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [previewTab, setPreviewTab] = useState<"all" | "slack" | "pagerduty">("all");
@@ -79,6 +87,8 @@ export default function Notifications() {
                     return (
                       <button
                         key={ch}
+                        disabled={channels !== null && !channels.includes(ch)}
+                        title={channels !== null && !channels.includes(ch) ? 'Subscription not configured' : ch}
                         onClick={() => setChannel(ch as any)}
                         className={`p-2.5 rounded-lg border text-left cursor-pointer transition-all text-[11px] font-mono font-bold flex items-center space-x-2 ${
                           isSelected
@@ -110,7 +120,7 @@ export default function Notifications() {
 
             <button
               onClick={handleSendAlert}
-              disabled={isSending || !customMsg.trim()}
+              disabled={isSending || !customMsg.trim() || (channels !== null && !channels.includes(channel))}
               className="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-colors cursor-pointer mt-6 shadow-md"
             >
               {isSending ? (
@@ -234,7 +244,7 @@ export default function Notifications() {
 
             {/* Sns summary metadata */}
             <div className="mt-4 pt-3 border-t border-slate-850 flex items-center justify-between text-[9px] text-slate-500 font-mono">
-              <span>DISPATCH ARNS: arn:aws:sns:us-east-1:*</span>
+              <span>{channels === null ? 'Checking subscriptions' : `Channels: ${channels.join(', ') || 'not configured'}`}</span>
               <span className="text-emerald-400 font-bold uppercase flex items-center space-x-1">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 <span>Provider acceptance log</span>

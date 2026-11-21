@@ -469,8 +469,9 @@ export function AlternativeSuppliers() {
     if (pendingAction) return;
     setPendingAction(true); setActionError('');
     try {
-      await runOperation('supplier', backups[idx].backup, { activate: !activeBackupStates[idx] });
-      setActiveBackupStates(prev => ({ ...prev, [idx]: !prev[idx] }));
+      const activate = !(activeBackupStates[idx] ?? backups[idx].active);
+      await runOperation('supplier', backups[idx].backup, { activate });
+      setActiveBackupStates(prev => ({ ...prev, [idx]: activate }));
     } catch (error) { setActionError(error instanceof Error ? error.message : 'Activation failed.'); }
     finally { setPendingAction(false); }
   };
@@ -501,7 +502,7 @@ export function AlternativeSuppliers() {
             </thead>
             <tbody className="divide-y divide-slate-850/50">
               {backups.map((b, idx) => {
-                const isActive = activeBackupStates[idx] || false;
+                const isActive = activeBackupStates[idx] ?? b.active;
                 return (
                   <tr key={idx} className="hover:bg-slate-900/40 transition-colors">
                     <td className="py-3 px-3 font-semibold text-red-400">{b.target}</td>
@@ -709,7 +710,7 @@ export function InventorySuggestions() {
             </thead>
             <tbody className="divide-y divide-slate-850/50">
               {suggestions.map((s, idx) => {
-                const isApproved = approvedList[idx] || false;
+                const isApproved = approvedList[idx] || s.status === 'Optimal';
                 return (
                   <tr key={idx} className="hover:bg-slate-900/40 transition-colors">
                     <td className="py-3 px-3 font-semibold text-slate-200">{s.component}</td>

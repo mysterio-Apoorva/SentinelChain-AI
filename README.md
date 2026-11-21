@@ -6,6 +6,8 @@ Supply-chain incident analysis and operational decision support using React, Typ
 
 ## Verification and implementation status
 
+For the minimal-cost AWS backend on existing Render hosting, see the [CloudShell deployment package and estimate](infrastructure/aws/README.md). It provisions real AWS services and persistent, explicitly labelled fictional demo data. Running the package in an authorized AWS session is required before those integrations are live.
+
 The original project built, but notification delivery, diagnostics, report downloads, voice briefings, chat replies and operational actions contained simulations. Shipment, supplier and trend screens displayed fixed sample records. Backend endpoints did not verify Cognito identity and displayed roles were editable locally.
 
 Implemented:
@@ -38,7 +40,7 @@ npm start
 
 `npm start` sets production mode and respects `PORT`. Vercel uses the same API implementation and the Vite build. Set VITE_COGNITO variables before building the frontend. The SPA requires real Cognito sign-in; no password bypass is supplied.
 
-Cognito groups: `Admin`, `Supply Chain Manager`, `Logistics Executive` may dispatch operations and alerts. `Analyst` and users without these groups cannot dispatch. Signup's requested role does not grant permissions; administrators assign groups. Configure a public app client without a client secret and email/password sign-in. Additional MFA challenges are reported explicitly; interactive MFA completion is not implemented.
+Cognito groups: `Admin`, `SupplyChainManager`, `LogisticsExecutive` may dispatch operations and alerts. The UI displays readable role names with spaces. `Analyst` and users without these groups cannot dispatch. Signup's requested role does not grant permissions; administrators assign groups. Configure a public app client without a client secret and email/password sign-in. Additional MFA challenges are reported explicitly; interactive MFA completion is not implemented. The CloudShell package creates an invite-only pool and an admin with a permanent app password.
 
 AWS permissions should cover the configured resources only: Bedrock Converse model invocation, DynamoDB PutItem/Scan, Lambda InvokeFunction, EventBridge PutEvents and SNS Publish. Configure EventBridge rules and SNS subscriptions in your AWS account. Slack and PagerDuty topics need their actual delivery adapters/subscriptions; topic acceptance alone does not establish delivery.
 

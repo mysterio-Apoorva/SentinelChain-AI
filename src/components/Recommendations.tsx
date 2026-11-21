@@ -1,3 +1,4 @@
+import { useDemoMode, useOperationalRows } from "../services/operationalData";
 import { runOperation } from "../services/api";
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
@@ -14,6 +15,8 @@ interface RecommendationsProps {
 }
 
 export default function Recommendations({ activeDisruption, onDeploySuccess }: RecommendationsProps) {
+  const demo = useDemoMode();
+  const savedPlans = useOperationalRows("playbooks", [{ incidentId: "", title: "", status: "" }]);
   const [deployedPlaybooks, setDeployedPlaybooks] = useState<string[]>([]);
   const [deployingId, setDeployingId] = useState<string | null>(null);
   const [transitSpeedBuffer, setTransitSpeedBuffer] = useState(85); // Interactive slide parameter
@@ -127,7 +130,7 @@ export default function Recommendations({ activeDisruption, onDeploySuccess }: R
         {/* Playbooks recommendations card grids */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch">
           {displayDisruption.recommendations.map((play, index) => {
-            const isDeployed = deployedPlaybooks.includes(play.title);
+            const isDeployed = deployedPlaybooks.includes(play.title) || savedPlans.some(plan => plan.incidentId === activeDisruption?.id && plan.title === play.title);
             const isDeploying = deployingId === play.title;
             // Calculate dynamic customized reduction value
             const customizedReduction = Math.round(play.reduction * (transitSpeedBuffer / 100));
@@ -194,12 +197,12 @@ export default function Recommendations({ activeDisruption, onDeploySuccess }: R
                     ) : isDeployed ? (
                       <>
                         <Check className="w-3.5 h-3.5" />
-                        <span>Enforced</span>
+                        <span>{demo ? "Plan Saved" : "Enforced"}</span>
                       </>
                     ) : (
                       <>
                         <Play className="w-3.5 h-3.5" />
-                        <span>Enforce Playbook</span>
+                        <span>{demo ? "Save Demo Plan" : "Enforce Playbook"}</span>
                       </>
                     )}
                   </button>

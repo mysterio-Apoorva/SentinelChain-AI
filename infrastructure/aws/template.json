@@ -1,0 +1,481 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "SentinelChain demo backend for existing Render hosting. No public Lambda URL; scoped IAM access.",
+  "Parameters": {
+    "AlertEmail": {
+      "Type": "String",
+      "AllowedPattern": "[^\\s@]+@[^\\s@]+\\.[^\\s@]+"
+    },
+    "BedrockModelId": {
+      "Type": "String",
+      "Default": "amazon.nova-lite-v1:0",
+      "AllowedValues": [
+        "amazon.nova-lite-v1:0"
+      ]
+    }
+  },
+  "Resources": {
+    "IncidentTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "BillingMode": "PAY_PER_REQUEST",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "id",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "id",
+            "KeyType": "HASH"
+          }
+        ],
+        "SSESpecification": {
+          "SSEEnabled": true
+        }
+      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "StateTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "BillingMode": "PAY_PER_REQUEST",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "id",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "id",
+            "KeyType": "HASH"
+          }
+        ],
+        "SSESpecification": {
+          "SSEEnabled": true
+        }
+      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "UserPool": {
+      "Type": "AWS::Cognito::UserPool",
+      "Properties": {
+        "UserPoolName": {
+          "Fn::Sub": "${AWS::StackName}-users"
+        },
+        "UserPoolTier": "LITE",
+        "UsernameAttributes": [
+          "email"
+        ],
+        "UsernameConfiguration": {
+          "CaseSensitive": false
+        },
+        "AutoVerifiedAttributes": [
+          "email"
+        ],
+        "AdminCreateUserConfig": {
+          "AllowAdminCreateUserOnly": true
+        },
+        "MfaConfiguration": "OFF",
+        "Policies": {
+          "PasswordPolicy": {
+            "MinimumLength": 12,
+            "RequireLowercase": true,
+            "RequireUppercase": true,
+            "RequireNumbers": true,
+            "RequireSymbols": true
+          }
+        },
+        "AccountRecoverySetting": {
+          "RecoveryMechanisms": [
+            {
+              "Name": "verified_email",
+              "Priority": 1
+            }
+          ]
+        }
+      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "AppClient": {
+      "Type": "AWS::Cognito::UserPoolClient",
+      "Properties": {
+        "UserPoolId": {
+          "Ref": "UserPool"
+        },
+        "ClientName": "SentinelChain Render",
+        "GenerateSecret": false,
+        "ExplicitAuthFlows": [
+          "ALLOW_USER_SRP_AUTH",
+          "ALLOW_REFRESH_TOKEN_AUTH"
+        ],
+        "PreventUserExistenceErrors": "ENABLED",
+        "EnableTokenRevocation": true,
+        "AccessTokenValidity": 60,
+        "IdTokenValidity": 60,
+        "RefreshTokenValidity": 7,
+        "TokenValidityUnits": {
+          "AccessToken": "minutes",
+          "IdToken": "minutes",
+          "RefreshToken": "days"
+        }
+      }
+    },
+    "AdminGroup": {
+      "Type": "AWS::Cognito::UserPoolGroup",
+      "Properties": {
+        "UserPoolId": {
+          "Ref": "UserPool"
+        },
+        "GroupName": "Admin"
+      }
+    },
+    "ManagerGroup": {
+      "Type": "AWS::Cognito::UserPoolGroup",
+      "Properties": {
+        "UserPoolId": {
+          "Ref": "UserPool"
+        },
+        "GroupName": "SupplyChainManager"
+      }
+    },
+    "LogisticsGroup": {
+      "Type": "AWS::Cognito::UserPoolGroup",
+      "Properties": {
+        "UserPoolId": {
+          "Ref": "UserPool"
+        },
+        "GroupName": "LogisticsExecutive"
+      }
+    },
+    "AnalystGroup": {
+      "Type": "AWS::Cognito::UserPoolGroup",
+      "Properties": {
+        "UserPoolId": {
+          "Ref": "UserPool"
+        },
+        "GroupName": "Analyst"
+      }
+    },
+    "Alerts": {
+      "Type": "AWS::SNS::Topic",
+      "Properties": {
+        "DisplayName": "SentinelChain Demo Alerts"
+      }
+    },
+    "EmailSubscription": {
+      "Type": "AWS::SNS::Subscription",
+      "Properties": {
+        "TopicArn": {
+          "Ref": "Alerts"
+        },
+        "Protocol": "email",
+        "Endpoint": {
+          "Ref": "AlertEmail"
+        }
+      }
+    },
+    "EventBus": {
+      "Type": "AWS::Events::EventBus",
+      "Properties": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-events"
+        }
+      }
+    },
+    "AnalysisRule": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "EventBusName": {
+          "Ref": "EventBus"
+        },
+        "EventPattern": {
+          "source": [
+            "sentinel.ai"
+          ],
+          "detail-type": [
+            "AIAnalysisCompleted"
+          ]
+        },
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Id": "EmailAlerts",
+            "Arn": {
+              "Ref": "Alerts"
+            },
+            "InputTransformer": {
+              "InputPathsMap": {
+                "headline": "$.detail.headline",
+                "severity": "$.detail.severity"
+              },
+              "InputTemplate": "\"SentinelChain demo analysis: <headline> (severity: <severity>). Model estimates require review; no real-world action executed.\""
+            }
+          }
+        ]
+      }
+    },
+    "AlertsPolicy": {
+      "Type": "AWS::SNS::TopicPolicy",
+      "Properties": {
+        "Topics": [
+          {
+            "Ref": "Alerts"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "events.amazonaws.com"
+              },
+              "Action": "sns:Publish",
+              "Resource": {
+                "Ref": "Alerts"
+              },
+              "Condition": {
+                "ArnEquals": {
+                  "aws:SourceArn": {
+                    "Fn::GetAtt": [
+                      "AnalysisRule",
+                      "Arn"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "AdapterRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "DemoAdapter",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "StateTable",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "IncidentTable",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-adapter:*"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "AdapterLogs": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${AWS::StackName}-adapter"
+        },
+        "RetentionInDays": 7
+      }
+    },
+    "Adapter": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": {
+          "Fn::Sub": "${AWS::StackName}-adapter"
+        },
+        "Runtime": "python3.13",
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "AdapterRole",
+            "Arn"
+          ]
+        },
+        "MemorySize": 256,
+        "Timeout": 20,
+        "Environment": {
+          "Variables": {
+            "STATE_TABLE": {
+              "Ref": "StateTable"
+            },
+            "INCIDENT_TABLE": {
+              "Ref": "IncidentTable"
+            },
+            "AI_MONTHLY_LIMIT": "1000"
+          }
+        },
+        "Code": {
+          "ZipFile": "\"\"\"Private IAM-invoked adapter. All records and mutations are explicitly DEMO data.\"\"\"\nimport copy\nimport hashlib\nimport json\nimport os\nfrom datetime import datetime, timezone\nfrom decimal import Decimal\n\nimport boto3\nfrom boto3.dynamodb.types import TypeSerializer\nfrom botocore.exceptions import ClientError\n\n_serializer = TypeSerializer()\n\ndef encode(item):\n    return {k: _serializer.serialize(v) for k, v in item.items()}\n\ndef plain(value):\n    return json.loads(json.dumps(value, default=lambda n: int(n) if isinstance(n, Decimal) and n % 1 == 0 else float(n)))\n\ndef now():\n    return datetime.now(timezone.utc).isoformat()\n\ndef action_fingerprint(body):\n    return hashlib.sha256(json.dumps({k: body.get(k) for k in ('type', 'target', 'parameters')}, sort_keys=True, separators=(',', ':')).encode()).hexdigest()\n\ndef apply_operation(dataset, body, incident=None):\n    \"\"\"Pure, validated state transition; never contacts a carrier or places an order.\"\"\"\n    data = copy.deepcopy(dataset)\n    kind, target, params = body.get('type'), body.get('target'), body.get('parameters') or {}\n    if not isinstance(target, str) or not target.strip() or len(target) > 300 or not isinstance(params, dict):\n        raise ValueError('Invalid operation target or parameters.')\n    if kind == 'supplier':\n        row = next((r for r in data['backups'] if r['backup'] == target), None)\n        if not row or row['onboarding'] != 'Ready' or not isinstance(params.get('activate'), bool):\n            raise ValueError('Supplier is not ready or activation is invalid.')\n        row['active'] = params['activate']\n        for supplier in data['suppliers']:\n            if supplier['name'] == row['target']:\n                supplier['backupActive'] = row['active']\n    elif kind == 'inventory':\n        row = next((r for r in data['suggestions'] if r['component'] == target), None)\n        if not row or params.get('recommended') != row['recommended']:\n            raise ValueError('Inventory target or recommendation has changed. Refresh first.')\n        row.update(current=row['recommended'], adjustment='0 Days', status='Optimal', approved=True)\n    elif kind == 'playbook':\n        if not incident or target not in [r['title'] for r in incident.get('recommendations', [])]:\n            raise ValueError('Playbook must match a saved analysis owned by this user.')\n        for key, low, high in [('transitSpeedBuffer', 50, 120), ('budgetCap', 50, 300)]:\n            value = params.get(key)\n            if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)) or not low <= value <= high:\n                raise ValueError('Playbook control is outside its allowed range.')\n        controls = {key: Decimal(str(params[key])) for key in ('transitSpeedBuffer', 'budgetCap')}\n        controls['incidentId'] = params['incidentId']\n        plan = {'incidentId': params['incidentId'], 'title': target, 'parameters': controls, 'status': 'demo_plan_saved', 'createdAt': now()}\n        plans = [p for p in data.get('playbooks', []) if (p['incidentId'], p['title']) != (params['incidentId'], target)]\n        data['playbooks'] = (plans + [plan])[-50:]\n    else:\n        raise ValueError('Unsupported operation type.')\n    data['updatedAt'] = now()\n    return data\n\ndef handle(event, state, incidents, client):\n    action = event.get('action')\n    if action == 'data':\n        row = state.get_item(Key={'id': 'dataset'}, ConsistentRead=True).get('Item')\n        if not row:\n            return {'error': 'Demo dataset has not been seeded.', 'statusCode': 503}\n        data = plain(row['data'])\n        data['playbooks'] = [p for p in data.get('playbooks', []) if p.get('userId') == event.get('userId')]\n        return data\n    if action == 'quota':\n        key = 'ai-quota#' + datetime.now(timezone.utc).strftime('%Y-%m')\n        limit = int(os.environ.get('AI_MONTHLY_LIMIT', '1000'))\n        try:\n            state.update_item(Key={'id': key}, UpdateExpression='ADD #count :one',\n                ConditionExpression='attribute_not_exists(#count) OR #count < :limit',\n                ExpressionAttributeNames={'#count': 'count'}, ExpressionAttributeValues={':one': 1, ':limit': limit})\n            return {'accepted': True}\n        except ClientError as error:\n            if error.response['Error']['Code'] == 'ConditionalCheckFailedException':\n                return {'error': 'Monthly demo AI request limit reached. Ask the administrator to review usage.', 'statusCode': 429}\n            raise\n    if action == 'audit':\n        analysis = event.get('analysis') or {}\n        if not analysis.get('id') or not event.get('userId'):\n            raise ValueError('Analysis ID and user are required.')\n        state.put_item(Item={'id': 'analysis#' + analysis['id'], 'userId': event['userId'], 'createdAt': now(), 'headline': analysis.get('headline'), 'source': 'bedrock'})\n        return {'status': 'recorded'}\n    if action != 'operation':\n        raise ValueError('Unsupported adapter action.')\n    body, user = event.get('body') or {}, event.get('userId')\n    key = body.get('idempotencyKey')\n    if not isinstance(user, str) or not user or not isinstance(key, str) or not 1 <= len(key) <= 100:\n        raise ValueError('User and idempotency key are required.')\n    ledger_key = 'operation#' + hashlib.sha256((user + ':' + key).encode()).hexdigest()\n    fingerprint = action_fingerprint(body)\n    for _ in range(4):\n        previous = state.get_item(Key={'id': ledger_key}, ConsistentRead=True).get('Item')\n        if previous:\n            if previous['fingerprint'] != fingerprint:\n                return {'error': 'Idempotency key reused for a different action.', 'statusCode': 409}\n            return plain(previous['result'])\n        row = state.get_item(Key={'id': 'dataset'}, ConsistentRead=True).get('Item')\n        if not row:\n            return {'error': 'Demo dataset has not been seeded.', 'statusCode': 503}\n        incident = None\n        if body.get('type') == 'playbook':\n            incident_id = (body.get('parameters') or {}).get('incidentId')\n            if not isinstance(incident_id, str) or not incident_id:\n                raise ValueError('Incident ID is required.')\n            saved = incidents.get_item(Key={'id': incident_id}, ConsistentRead=True).get('Item', {})\n            if saved.get('userId') != user:\n                return {'error': 'Incident is not accessible to this user.', 'statusCode': 403}\n            incident = saved.get('analysis')\n        updated = apply_operation(row['data'], body, incident)\n        if body.get('type') == 'playbook':\n            updated['playbooks'][-1]['userId'] = user\n        result = {'id': key, 'status': 'completed', 'reference': ledger_key, 'timestamp': now(), 'mode': 'demo', 'description': 'Demo records updated; no real-world order or route changed.'}\n        try:\n            client.transact_write_items(TransactItems=[\n                {'Put': {'TableName': state.name, 'Item': encode({'id': 'dataset', 'version': row['version'] + 1, 'data': updated}), 'ConditionExpression': '#version = :version', 'ExpressionAttributeNames': {'#version': 'version'}, 'ExpressionAttributeValues': encode({':version': row['version']})}},\n                {'Put': {'TableName': state.name, 'Item': encode({'id': ledger_key, 'userId': user, 'fingerprint': fingerprint, 'result': result}), 'ConditionExpression': 'attribute_not_exists(id)'}}\n            ])\n            return result\n        except ClientError as error:\n            if error.response['Error']['Code'] != 'TransactionCanceledException':\n                raise\n    return {'error': 'Concurrent update. Retry using the same action ID.', 'statusCode': 409}\n\ndef handler(event, context):\n    db = boto3.resource('dynamodb')\n    try:\n        return handle(event, db.Table(os.environ['STATE_TABLE']), db.Table(os.environ['INCIDENT_TABLE']), boto3.client('dynamodb'))\n    except (ValueError, KeyError, TypeError) as error:\n        return {'error': str(error), 'statusCode': 400}\n"
+        }
+      },
+      "DependsOn": "AdapterLogs"
+    },
+    "RuntimeUser": {
+      "Type": "AWS::IAM::User",
+      "Properties": {
+        "Policies": [
+          {
+            "PolicyName": "SentinelChainRuntime",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "bedrock:InvokeModel"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:PutItem",
+                    "dynamodb:Scan"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "IncidentTable",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:InvokeFunction"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "Adapter",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "events:PutEvents"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "EventBus",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "sns:Publish"
+                  ],
+                  "Resource": {
+                    "Ref": "Alerts"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "Region": {
+      "Value": {
+        "Ref": "AWS::Region"
+      }
+    },
+    "UserPoolId": {
+      "Value": {
+        "Ref": "UserPool"
+      }
+    },
+    "AppClientId": {
+      "Value": {
+        "Ref": "AppClient"
+      }
+    },
+    "IncidentTableName": {
+      "Value": {
+        "Ref": "IncidentTable"
+      }
+    },
+    "StateTableName": {
+      "Value": {
+        "Ref": "StateTable"
+      }
+    },
+    "AdapterName": {
+      "Value": {
+        "Ref": "Adapter"
+      }
+    },
+    "EventBusName": {
+      "Value": {
+        "Ref": "EventBus"
+      }
+    },
+    "EmailTopicArn": {
+      "Value": {
+        "Ref": "Alerts"
+      }
+    },
+    "RuntimeUserName": {
+      "Value": {
+        "Ref": "RuntimeUser"
+      }
+    }
+  }
+}
