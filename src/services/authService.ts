@@ -5,6 +5,7 @@ import {
   signOut as amplifySignOut,
   getCurrentUser as amplifyGetCurrentUser,
   fetchUserAttributes,
+  fetchAuthSession,
   resetPassword as amplifyResetPassword,
   confirmResetPassword as amplifyConfirmResetPassword,
 } from "aws-amplify/auth";
@@ -23,6 +24,11 @@ interface LocalProfile {
   role: CognitoRole;
 }
 
+async function verifiedRole(): Promise<CognitoRole> {
+  const session = await fetchAuthSession();
+  const groups = session.tokens?.idToken?.payload['cognito:groups'];
+  return ['Admin', 'Supply Chain Manager', 'Logistics Executive', 'Analyst'].find(role => Array.isArray(groups) && groups.includes(role)) as CognitoRole || 'Analyst';
+}
 const profileKey = (email: string): string =>
   `${PROFILE_KEY_PREFIX}${email.toLowerCase()}`;
 
@@ -32,7 +38,7 @@ const saveProfile = (email: string, profile: LocalProfile): void => {
 
 const loadProfile = (email: string): LocalProfile | null => {
   const raw = localStorage.getItem(profileKey(email));
-  return raw ? (JSON.parse(raw) as LocalProfile) : null;
+  try { return raw ? (JSON.parse(raw) as LocalProfile) : null; } catch { return null; }
 };
 
 // ---------------------------------------------------------------------------
@@ -70,7 +76,7 @@ export const authService = {
         name: profile?.name ?? email,
         email,
         company: profile?.company ?? "",
-        role: (profile?.role ?? "") as CognitoRole,
+        role: await verifiedRole(),
       };
 
       return user;
@@ -101,7 +107,7 @@ export const authService = {
         name: profile?.name ?? resolvedEmail,
         email: resolvedEmail,
         company: profile?.company ?? "",
-        role: (profile?.role ?? "") as CognitoRole,
+        role: await verifiedRole(),
       };
 
       return user;

@@ -17,6 +17,7 @@ export default function MetricsOverlay({ isOpen, onClose }: MetricsOverlayProps)
   const fetchMetrics = async () => {
     try {
       const res = await fetch("/api/performance-metrics");
+      if (!res.ok) throw new Error("Metrics unavailable");
       if (res.ok) {
         const data: PerformanceMetrics = await res.json();
         setMetrics(data);
@@ -24,6 +25,7 @@ export default function MetricsOverlay({ isOpen, onClose }: MetricsOverlayProps)
         
         // Accumulate rolling chart history for CPU/Latency
         setHistory((prev) => {
+          if (data.awsLambdaLatencyMs == null) return [];
           const updated = [...prev, { 
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), 
             latency: data.awsLambdaLatencyMs 
@@ -32,21 +34,8 @@ export default function MetricsOverlay({ isOpen, onClose }: MetricsOverlayProps)
         });
       }
     } catch (err) {
-      console.warn("Telemetry endpoint disconnected. Resorting to edge offline diagnostics:", err);
-      // Mock localized fallback if API fails or in static-only dev modes
-      const fallback: PerformanceMetrics = {
-        status: "LOCAL_EMULATOR",
-        uptimeSeconds: Math.round(performance.now() / 1000),
-        serverRamMb: "128MB / 512MB",
-        awsLambdaLatencyMs: Math.floor(Math.random() * 20) + 40,
-        bedrockTokenThroughput: Math.floor(Math.random() * 100) + 1150,
-        cloudWatchAlarms: 0,
-        activeIngestStreams: 4,
-        dynamoDbQueriesPerSec: (Math.random() * 10 + 35).toFixed(1),
-        apiGatewayLatencyMs: Math.floor(Math.random() * 5) + 10,
-      };
-      setMetrics(fallback);
-      setLastUpdated(new Date().toLocaleTimeString());
+      setMetrics(null);
+      setLastUpdated('Telemetry unavailable. Retry the connection.');
     } finally {
       setLoading(false);
     }
@@ -96,6 +85,7 @@ export default function MetricsOverlay({ isOpen, onClose }: MetricsOverlayProps)
             </div>
           </div>
 
+          {!loading && !metrics && <p role="alert" className="text-sm text-amber-400">{lastUpdated}</p>}
           {loading && !metrics ? (
             <div className="flex items-center justify-center py-8 font-mono text-xs text-slate-500">
               Establishing pipeline handshake...
@@ -127,7 +117,7 @@ export default function MetricsOverlay({ isOpen, onClose }: MetricsOverlayProps)
                       <Cpu className="w-3.5 h-3.5 text-orange-500" />
                       <span>Lambda Compute:</span>
                     </span>
-                    <span className="font-semibold text-slate-200">{metrics.awsLambdaLatencyMs}ms</span>
+                    <span className="font-semibold text-slate-200">{metrics.awsLambdaLatencyMs == null ? "Not measured" : `${metrics.awsLambdaLatencyMs}ms`}</span>
                   </div>
 
                   <div className="flex justify-between items-center text-xs">
@@ -135,7 +125,7 @@ export default function MetricsOverlay({ isOpen, onClose }: MetricsOverlayProps)
                       <Zap className="w-3.5 h-3.5 text-sky-400" />
                       <span>Bedrock Ingress:</span>
                     </span>
-                    <span className="font-semibold text-sky-400">{metrics.bedrockTokenThroughput} T/sec</span>
+                    <span className="font-semibold text-sky-400">{metrics.bedrockTokenThroughput ?? "Not measured"}</span>
                   </div>
 
                   <div className="flex justify-between items-center text-xs">
@@ -143,7 +133,7 @@ export default function MetricsOverlay({ isOpen, onClose }: MetricsOverlayProps)
                       <HardDrive className="w-3.5 h-3.5 text-purple-400" />
                       <span>DynamoDB QPS:</span>
                     </span>
-                    <span className="font-semibold text-slate-200">{metrics.dynamoDbQueriesPerSec} q/s</span>
+                    <span className="font-semibold text-slate-200">{metrics.dynamoDbQueriesPerSec ?? "Not measured"}</span>
                   </div>
 
                   <div className="flex justify-between items-center text-xs">
@@ -159,7 +149,7 @@ export default function MetricsOverlay({ isOpen, onClose }: MetricsOverlayProps)
                       <AlertTriangle className="w-3.5 h-3.5 text-yellow-500" />
                       <span>CloudWatch Alarms:</span>
                     </span>
-                    <span className="font-semibold text-slate-400">{metrics.cloudWatchAlarms} active</span>
+                    <span className="font-semibold text-slate-400">{metrics.cloudWatchAlarms ?? "Not connected"}</span>
                   </div>
                 </div>
 
@@ -167,7 +157,7 @@ export default function MetricsOverlay({ isOpen, onClose }: MetricsOverlayProps)
                 <div className="space-y-1 bg-slate-900/60 border border-slate-800/60 rounded-xl p-2.5">
                   <div className="flex justify-between text-[8px] text-slate-500 font-bold uppercase tracking-wider">
                     <span>Lambda Latency Stream</span>
-                    <span className="text-sky-400">{metrics.awsLambdaLatencyMs}ms</span>
+                    <span className="text-sky-400">{metrics.awsLambdaLatencyMs == null ? "Not measured" : `${metrics.awsLambdaLatencyMs}ms`}</span>
                   </div>
                   <div className="h-8 flex items-end justify-between pt-2 space-x-1">
                     {history.map((pt, idx) => {

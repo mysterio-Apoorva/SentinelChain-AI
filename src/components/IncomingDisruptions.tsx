@@ -1,3 +1,4 @@
+import { apiRequest } from "../services/api";
 import { useState } from "react";
 import { getCurrentUser, fetchUserAttributes } from "aws-amplify/auth";
 import { motion, AnimatePresence } from "motion/react";
@@ -60,6 +61,7 @@ const INTEL_BOOSTER_SNIPPETS = [
 ];
 
 export default function IncomingDisruptions({ onAnalyzeDisruption, isAnalyzing }: IncomingDisruptionsProps) {
+  const [requestPending, setRequestPending] = useState(false);
   const [customReport, setCustomReport] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<string>("suez-blockage");
   const [errorMsg, setErrorMsg] = useState("");
@@ -89,6 +91,7 @@ export default function IncomingDisruptions({ onAnalyzeDisruption, isAnalyzing }
   };
 
   const handleTriggerAnalysis = async () => {
+    if (requestPending) return;
     setErrorMsg("");
     let textToAnalyze = customReport.trim();
     
@@ -105,33 +108,17 @@ export default function IncomingDisruptions({ onAnalyzeDisruption, isAnalyzing }
       return;
     }
 
+    setRequestPending(true);
     try {
-      const user = await getCurrentUser();
-const attributes = await fetchUserAttributes();
-
-const res = await fetch("/api/analyze-disruption", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    text: textToAnalyze,
-    userId: user.userId,
-    email: attributes.email,
-  }),
-});
-
-      if (!res.ok) {
-        throw new Error("Analysis failed. Server responded with an error.");
-      }
-
-      const analyzedDisruption: Disruption = await res.json();
+      const analyzedDisruption = await apiRequest<Disruption>('analyze-disruption', { text: textToAnalyze });
       // Add id/metadata for tracking
-      analyzedDisruption.id = `disruption-${Date.now()}`;
+
       analyzedDisruption.promptText = textToAnalyze;
       onAnalyzeDisruption(analyzedDisruption);
     } catch (err: any) {
       console.error("Error calling analyze disruption:", err);
       setErrorMsg(err.message || "An unexpected error occurred during analysis.");
-    }
+    } finally { setRequestPending(false); }
   };
 
   const activeText = customReport || TEMPLATE_DISRUPTIONS.find(t => t.id === selectedTemplate)?.promptText || "";
@@ -217,7 +204,7 @@ const res = await fetch("/api/analyze-disruption", {
               </div>
               <div className="flex justify-between">
                 <span>Model Engine:</span>
-                <span className="text-slate-300">AWS Bedrock (Nova Lite)</span>
+                <span className="text-slate-300">Configured Bedrock model</span>
               </div>
             </div>
           </div>
@@ -234,7 +221,7 @@ const res = await fetch("/api/analyze-disruption", {
                 </div>
                 <div className="flex items-center space-x-2 font-mono text-[9px] text-slate-500">
                   <Cpu className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
-                  <span>PARSER PIPELINE: ACTIVE</span>
+                  <span>REPORT INPUT</span>
                 </div>
               </div>
 
@@ -304,15 +291,15 @@ const res = await fetch("/api/analyze-disruption", {
                 ) : (
                   <span className="block">ACTIVE: {selectedTemplate.toUpperCase()}</span>
                 )}
-                <span>COGNITIVE TEMPERATURE: 0.15</span>
+                <span>COGNITIVE TEMPERATURE: 0</span>
               </div>
 
               <button
                 onClick={handleTriggerAnalysis}
-                disabled={isAnalyzing}
+                disabled={isAnalyzing || requestPending}
                 className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-slate-950 text-xs font-bold uppercase tracking-wider flex items-center space-x-2 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shrink-0"
               >
-                {isAnalyzing ? (
+                {isAnalyzing || requestPending ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
                     <span>Analyzing Cascades...</span>

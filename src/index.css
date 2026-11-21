@@ -101,3 +101,20 @@ body {
   font-family: var(--font-sans);
   overflow-x: hidden;
 }
+
+/* Shared page rhythm; existing palette, surfaces and animations are preserved. */
+main > section { min-height: auto; padding: 0; width: 100%; }
+main > section > div { width: 100%; max-width: 64rem; margin-inline: auto; }
+main > div, main > section { min-width: 0; }
+main h1, main h2 { overflow-wrap: anywhere; }
+button:disabled { cursor: not-allowed; opacity: .6; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--color-sky-400); outline-offset: 3px; }
+@media (max-width: 640px) {
+  #left-glass-sidebar { left: 8px; }
+  #cognito-top-profile { top: 12px; right: 12px; max-width: calc(100vw - 96px); }
+  main { padding-left: 88px; padding-right: 12px; }
+  main table { min-width: 640px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; }
+}

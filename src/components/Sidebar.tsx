@@ -199,6 +199,8 @@ export default function Sidebar({ activeRole, onOpenAuth, onToggleMetrics, showM
             <div key={group.id} className="flex flex-col space-y-0.5">
               {/* Group Trigger Button */}
               <button
+                aria-label={group.label}
+                onFocus={() => setIsExpanded(true)}
                 onClick={() => {
                   if (hasChildren) {
                     toggleGroup(group.id);

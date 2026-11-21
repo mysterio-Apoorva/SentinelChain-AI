@@ -1,3 +1,5 @@
+import { apiRequest } from "./services/api";
+import { OperationalDataProvider, DataStatus } from "./services/operationalData";
 import { useState, useEffect } from "react";
 import AnimatedBackground from "./components/AnimatedBackground";
 import Sidebar from "./components/Sidebar";
@@ -115,11 +117,18 @@ export default function App() {
       if (user) {
         setCognitoUser(user);
         setActiveRole(mapCognitoRoleToIam(user.role));
+
       }
 
       setLoadingAuth(false);
     });
   }, []);
+  useEffect(() => {
+    if (!cognitoUser) return;
+    let active = true;
+    apiRequest('history').then(items => { if (active && items[0]?.analysis) setActiveDisruption(current => current || items[0].analysis); }).catch(() => {});
+    return () => { active = false; };
+  }, [cognitoUser?.email]);
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [activeSection]);
@@ -128,6 +137,7 @@ export default function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Toggle metrics using Ctrl + ` (backtick) or single ` key press
+      if ((e.target as HTMLElement)?.matches("input,textarea,[contenteditable]")) return;
       if (e.key === "`" || (e.key === "t" && e.ctrlKey)) {
         setShowMetrics(prev => !prev);
       }
@@ -139,34 +149,10 @@ export default function App() {
   // Sequential data-pipeline animation when a threat scenario is initiated
   // Fixed: No page automatically redirects to AI Reasoning. The user navigates independently.
   const handleAnalyzeDisruption = (disruption: Disruption) => {
-    console.log("===== APP RECEIVED =====");
-    console.log(disruption);
-    console.log("========================");
-    setIsAnalyzing(true);
-    setPipelineStep("ingest");
-
-    // Step-by-step progress simulation
-    setTimeout(() => {
-      setPipelineStep("processing"); // S3 -> Lambda
-      setTimeout(() => {
-        setPipelineStep("reasoning"); // Lambda -> Bedrock LLM
-        setTimeout(() => {
-          setPipelineStep("storage"); // Bedrock -> DynamoDB
-          setTimeout(() => {
-            setPipelineStep("notification"); // DynamoDB -> SNS
-            setTimeout(() => {
-              setPipelineStep("done");
-              setActiveDisruption(disruption);
-              setIsAnalyzing(false);
-
-              window.location.hash = "incident-details";
-              setActiveSection("incident-details");
-              // Simply alert completion within the current console without redirecting
-            }, 900);
-          }, 900);
-        }, 900);
-      }, 900);
-    }, 900);
+    setActiveDisruption(disruption);
+    setPipelineStep("done");
+    setIsAnalyzing(false);
+    window.location.hash = "incident-details";
   };
 
   const handleDeploySuccess = (reductionValue: number) => {
@@ -197,6 +183,7 @@ export default function App() {
   const handleSignOut = async () => {
     await authService.signOut();
     setCognitoUser(null);
+    setActiveDisruption(null);
   };
 
   // Protected Routes Check: Require authenticated Cognito User pool session
@@ -213,6 +200,7 @@ export default function App() {
   }
 
   return (
+    <OperationalDataProvider>
     <div className="relative min-h-screen bg-transparent text-slate-100 overflow-x-hidden antialiased">
       {/* 1. Canvas Background */}
       <AnimatedBackground />
@@ -247,8 +235,9 @@ export default function App() {
       />
 
       {/* 3. Main Scroll Container for the Homepage Cinematic Journey */}
-      <main className="pl-[84px] sm:pl-24 pr-4 md:pr-10 w-full flex flex-col relative z-10 py-8 min-h-[calc(100vh-48px)]">
+      <main className="pl-[84px] sm:pl-24 pr-4 md:pr-10 w-full flex flex-col relative z-10 pt-24 pb-10 min-h-[calc(100vh-48px)]">
 
+        <DataStatus />
         {/* Section 1: Dashboard Overview */}
         {activeSection === "dashboard" && (
           <DashboardOverview
@@ -343,17 +332,17 @@ export default function App() {
 
         {/* Section 15: Analytics — Reports */}
         {activeSection === "reports" && (
-          <Reports />
+          <Reports activeDisruption={activeDisruption} />
         )}
 
         {/* Section 16: AI Assistant — Voice Assistant */}
         {activeSection === "voice-assistant" && (
-          <VoiceAssistant />
+          <VoiceAssistant activeDisruption={activeDisruption} />
         )}
 
         {/* Section 17: AI Assistant — AI Chat */}
         {activeSection === "ai-chat" && (
-          <AiChat />
+          <AiChat activeDisruption={activeDisruption} />
         )}
 
         {/* Section 18: Notifications */}
@@ -382,7 +371,7 @@ export default function App() {
         isOpen={showAuth}
         onClose={() => setShowAuth(false)}
         activeRole={activeRole}
-        onSelectRole={setActiveRole}
+        onSelectRole={() => setShowAuth(false)}
       />
 
       {/* 5. Operations Diagnostics Floating Console Telemetry */}
@@ -391,5 +380,6 @@ export default function App() {
         onClose={() => setShowMetrics(false)}
       />
     </div>
+    </OperationalDataProvider>
   );
 }

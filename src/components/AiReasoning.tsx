@@ -13,17 +13,14 @@ interface AiReasoningProps {
 }
 
 export default function AiReasoning({ activeDisruption, isAnalyzing }: AiReasoningProps) {
-  console.log("========== AI REASONING ==========");
-  console.log(activeDisruption);
-  console.log("=================================");
 
   const [activeStep, setActiveStep] = useState(1);
   const [selectedTokenIdx, setSelectedTokenIdx] = useState<number | null>(null);
   const [hoveredEntity, setHoveredEntity] = useState<string | null>(null);
 
   const stepsInfo = [
-    { num: 1, title: "Tokenization Mesh", icon: AlignLeft, desc: "Splits unstructured cables into indexable token sequences with color weighting." },
-    { num: 2, title: "Attention Entity Map", icon: BrainCircuit, desc: "Extracts physical logistics hubs, risk values, and timeline spans." },
+    { num: 1, title: "Report Tokens", icon: AlignLeft, desc: "Illustrative text view; colours and weights are not model internals." },
+    { num: 2, title: "Affected Entities", icon: BrainCircuit, desc: "Extracts physical logistics hubs, risk values, and timeline spans." },
     { num: 3, title: "Risk Inference Engine", icon: Cpu, desc: "Executes cognitive attention weights to infer downstream route cascade impacts." },
     { num: 4, title: "Structured JSON Compiler", icon: Code, desc: "Compiles mathematical inferences into structured, schema-validated JSON." }
   ];
@@ -59,8 +56,8 @@ export default function AiReasoning({ activeDisruption, isAnalyzing }: AiReasoni
     return {
       word: word.replace(/[.,:;]/g, ""),
       style: colors[i % colors.length],
-      embeddingIndex: Math.floor(10000 + (i * 493.52)),
-      weight: parseFloat((0.45 + (Math.sin(i) * 0.35)).toFixed(3))
+      embeddingIndex: i + 1,
+      weight: Number((rawParagraph.split(" ").filter(token => token.toLowerCase() === word.toLowerCase()).length / rawParagraph.split(" ").length).toFixed(3))
     };
   });
 
@@ -70,12 +67,16 @@ export default function AiReasoning({ activeDisruption, isAnalyzing }: AiReasoni
       className="min-h-screen flex flex-col justify-start items-center px-4 sm:px-6 py-20 w-full"
     >
       <div className="w-full max-w-5xl">
+
+        {!activeDisruption && <p role="status" className="text-amber-400 text-xs mb-4">Example scenario. Analyze an incident to display your results.</p>}
+        {activeDisruption?.integrations && <p className="text-slate-400 text-xs mb-4">{Object.entries(activeDisruption.integrations).map(([key,value]) => `${key}: ${value}`).join(' | ')}</p>}
         {/* Title */}
         <div className="text-left mb-8 border-b border-slate-800/60 pb-5">
           <span className="text-xs font-mono text-sky-400 uppercase tracking-widest block mb-1">Stage V — AI Cognitive Core</span>
           <h2 className="text-2xl font-bold tracking-tight text-slate-100 uppercase">NLP Reasoning Workbench</h2>
+          <p className="text-sm text-sky-400 mt-2">{displayDisruption.headline}</p>
           <p className="text-slate-400 text-xs mt-2 max-w-2xl leading-relaxed">
-            See how server-side model nodes analyze logistics cables. Step through the stages below to inspect color-coded token sequences, vector weights, attention mapping, and structured JSON compiler outputs.
+            Inspect the submitted report, extracted entities, causal reasoning and validated JSON. Word colours are visual aids, not model attention weights.
           </p>
         </div>
 
@@ -130,19 +131,19 @@ export default function AiReasoning({ activeDisruption, isAnalyzing }: AiReasoni
             <div className="bg-slate-900/40 border border-slate-850 rounded-xl p-4 text-left font-mono text-[9px] text-slate-500 space-y-1.5">
               <div className="flex justify-between">
                 <span>MODEL KEY:</span>
-                <span className="text-sky-400 font-bold uppercase">amazon.nova-lite-v1:0</span>
+                <span className="text-sky-400 font-bold uppercase">{displayDisruption.source || "Example"}</span>
               </div>
               <div className="flex justify-between">
                 <span>EMBEDDING DEPTH:</span>
-                <span className="text-slate-300">1,536 FLOATS</span>
+                <span className="text-slate-300">Not exposed</span>
               </div>
               <div className="flex justify-between">
                 <span>CONTEXT SLOTS:</span>
-                <span className="text-slate-300">2,048,000 TOKENS</span>
+                <span className="text-slate-300">Model dependent</span>
               </div>
               <div className="flex justify-between">
                 <span>INFERENCE LATENCY:</span>
-                <span className="text-emerald-400">1.28 SEC TOTAL</span>
+                <span className="text-emerald-400">Not measured</span>
               </div>
             </div>
           </div>
@@ -156,7 +157,7 @@ export default function AiReasoning({ activeDisruption, isAnalyzing }: AiReasoni
                   <Terminal className="w-3.5 h-3.5 text-sky-400" />
                   <span className="text-slate-200 text-[10px] font-bold uppercase tracking-wide">AI Cognitive Processing Terminal</span>
                 </div>
-                <span className="text-[9px] font-mono text-slate-500 uppercase">SYS_ADDR: 0x8F9C_PROX</span>
+                <span className="text-[9px] font-mono text-slate-500 uppercase">REPORT WORKSPACE</span>
               </div>
 
               {/* Step Output Box */}
@@ -170,7 +171,7 @@ export default function AiReasoning({ activeDisruption, isAnalyzing }: AiReasoni
                     className="space-y-4 w-full"
                   >
                     <div className="flex justify-between items-center text-[10px] font-mono text-slate-500 uppercase">
-                      <span>Click a token below to inspect floating weight embeddings</span>
+                      <span>Select a word to inspect its position and frequency</span>
                       <span className="text-sky-400">Total: {tokens.length} Tokens</span>
                     </div>
 
@@ -196,7 +197,7 @@ export default function AiReasoning({ activeDisruption, isAnalyzing }: AiReasoni
 
                       {/* Embeddings Micro-Inspector (Right 4 Columns) */}
                       <div className="md:col-span-4 bg-slate-950/40 border border-slate-850 rounded-xl p-3.5 flex flex-col justify-between">
-                        <span className="text-[8.5px] font-mono text-slate-500 uppercase tracking-wider block border-b border-slate-850/60 pb-1.5 mb-2.5">Token Embeddings</span>
+                        <span className="text-[8.5px] font-mono text-slate-500 uppercase tracking-wider block border-b border-slate-850/60 pb-1.5 mb-2.5">Word Frequency</span>
                         {selectedTokenIdx !== null ? (
                           <div className="font-mono text-[9px] space-y-2 text-slate-400">
                             <div>
@@ -204,12 +205,12 @@ export default function AiReasoning({ activeDisruption, isAnalyzing }: AiReasoni
                               <span className="text-sky-400 font-bold">"{tokens[selectedTokenIdx].word}"</span>
                             </div>
                             <div>
-                              <span className="text-slate-500 block">VOCAB INDEX:</span>
+                              <span className="text-slate-500 block">WORD POSITION:</span>
                               <span className="text-slate-300">{tokens[selectedTokenIdx].embeddingIndex}</span>
                             </div>
                             <div>
-                              <span className="text-slate-500 block">ATTN WEIGHT:</span>
-                              <span className="text-slate-300">{tokens[selectedTokenIdx].weight} RMS</span>
+                              <span className="text-slate-500 block">RELATIVE FREQUENCY:</span>
+                              <span className="text-slate-300">{tokens[selectedTokenIdx].weight}</span>
                             </div>
                             <div className="h-1 bg-slate-900 rounded-full overflow-hidden mt-1">
                               <div className="h-full bg-sky-400" style={{ width: `${tokens[selectedTokenIdx].weight * 100}%` }} />
@@ -217,7 +218,7 @@ export default function AiReasoning({ activeDisruption, isAnalyzing }: AiReasoni
                           </div>
                         ) : (
                           <div className="text-[9px] text-slate-600 font-mono flex items-center h-full justify-center text-center">
-                            Click a token vector to analyze weights
+                            Select a word to inspect its frequency
                           </div>
                         )}
                       </div>
@@ -338,17 +339,8 @@ export default function AiReasoning({ activeDisruption, isAnalyzing }: AiReasoni
 
                     <div className="bg-slate-950 p-3 rounded-xl border border-slate-850 font-mono text-[10px] text-sky-400 overflow-x-auto max-h-[170px] overflow-y-auto leading-relaxed tab-size-2 max-w-full">
                       <pre>
-                        {`{
-  "headline": "${displayDisruption.headline}",
-  "category": "${displayDisruption.category}",
-  "severity": "${displayDisruption.severity}",
-  "probability": ${displayDisruption.probability},
-  "affectedNodes": ${JSON.stringify(displayDisruption.affectedNodes)},
-  "impactMetrics": {
-    "inventoryDrawdownPct": ${displayDisruption.impactInventory},
-    "costSurgePct": +${displayDisruption.impactCost}
-  }
-}`}
+                        {JSON.stringify(displayDisruption, null, 2)}
+
                       </pre>
                     </div>
                   </motion.div>

@@ -15,6 +15,7 @@ export async function invokeAnalysisLambda(payload: any) {
 
   const response = await lambda.send(command);
 
+  if (response.FunctionError) throw new Error("Lambda execution failed");
   if (!response.Payload) {
     throw new Error("Lambda returned no response");
   }

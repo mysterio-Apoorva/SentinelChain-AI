@@ -1,3 +1,4 @@
+import { useOperationalRows } from "../services/operationalData";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -31,88 +32,42 @@ export default function GlobalIntelligence({ activeRole, onOpenAuth, onExplore, 
   const [speechTimer, setSpeechTimer] = useState<number>(0);
   const [audioPlayed, setAudioPlayed] = useState(false);
 
-  const stats = [
-    { label: "Global Nodes Monitored", value: "24,815", change: "Continuous Scan", color: "text-sky-400" },
-    { label: "Global Risk Coefficient", value: "1.42", change: "Safe / Low", color: "text-emerald-400" },
-    { label: "Active Regional Anomalies", value: "4 Nodes", change: "Mitigations Live", color: "text-amber-500" },
-    { label: "Bedrock Engine SLA", value: "99.992%", change: "12ms Ingress", color: "text-purple-400" },
-  ];
 
-  const criticalHotspots = [
+
+  const criticalHotspots = useOperationalRows<{ id: string; name: string; status: string; details: string; coords: { x: number; y: number }; traffic: string; risk: string }>("criticalHotspots", [
     { id: "suez", name: "Suez Canal Corridor", status: "WARN", details: "Congestion backlog. Vessel density +18%. Expected delays: 10-14 days.", coords: { x: 55, y: 38 }, traffic: "32 vessels/hr", risk: "High" },
     { id: "shanghai", name: "Shanghai Terminal Complex", status: "STABLE", details: "Operating at peak berth throughput. Smooth custom clearances.", coords: { x: 78, y: 40 }, traffic: "64 vessels/hr", risk: "Low" },
     { id: "la", name: "Los Angeles Terminal", status: "CRITICAL", details: "Labor strike dispute. Gate flow -70%. Container dwell time: 11.2 days.", coords: { x: 20, y: 35 }, traffic: "8 vessels/hr", risk: "Critical" },
     { id: "panama", name: "Panama Canal Transit", status: "STABLE", details: "Water level constraints stabilized. Booking slots normal.", coords: { x: 32, y: 52 }, traffic: "18 vessels/hr", risk: "Low" },
-  ];
+  ]);
 
-  const supplierInsights: SupplierInsight[] = [
+  const supplierInsights = useOperationalRows<SupplierInsight>("supplierInsights", [
     { name: "Taiwan Micro-Semi Corp", category: "Electronics", material: "ASIC Micro-controllers", exposure: "High", safetyStock: 14, alternativeSource: "Vietnam Assembly Facility B", status: "Bottlenecked" },
     { name: "Suez Freight Logistics Ltd", category: "Carrier", material: "Ocean Cargo Transit", exposure: "Critical", safetyStock: 3, alternativeSource: "Cape of Good Hope Overland route", status: "Bottlenecked" },
     { name: "Rotterdam Stevedoring", category: "Stevedoring", material: "Container Cranes Cap.", exposure: "Low", safetyStock: 45, alternativeSource: "Standby Carrier Pool Delta", status: "Active" },
     { name: "Euro-Chemicals Gmbh", category: "Chemicals", material: "Lithium Solvent Gels", exposure: "Medium", safetyStock: 22, alternativeSource: "Sourcing Alternative USA", status: "Standby" },
     { name: "Nippon Glass Fabricators", category: "Industrial", material: "Fiberglass Substrates", exposure: "Low", safetyStock: 30, alternativeSource: "Kyushu Mainland Plant", status: "Active" }
+  ]);
+
+  const stats = [
+    { label: "Global Nodes Monitored", value: String(criticalHotspots.length), change: "Continuous Scan", color: "text-sky-400" },
+    { label: "Global Risk Coefficient", value: "Unavailable", change: "Safe / Low", color: "text-emerald-400" },
+    { label: "Active Regional Anomalies", value: String(criticalHotspots.filter(n => n.status !== "STABLE").length), change: "Connected records", color: "text-amber-500" },
+    { label: "Bedrock Engine SLA", value: "Not measured", change: "Model service", color: "text-purple-400" },
   ];
 
-  // Speech Briefing transcripts based on active hotspot
-  const voiceBriefings: Record<string, string[]> = {
-    "Suez Canal Corridor": [
-      "Securing audio handshake with Sentinel AI voice module...",
-      "ALERT: Suez Canal Transit Corridor reports critical bottlenecks due to container ship grounding.",
-      "Cascading effects indicate Rotterdam and Singapore arrival times are delayed by 10 to 14 days.",
-      "Recommendations generated. High priority: Initiate Cape of Good Hope rerouting immediately."
-    ],
-    "Shanghai Terminal Complex": [
-      "Securing audio handshake with Sentinel AI voice module...",
-      "Shanghai Terminal Complex status declared: STABLE.",
-      "Vessel density at peak capacity with standard customs clearing lead-times of 24 hours.",
-      "No mitigation action required. Continued monitoring in progress."
-    ],
-    "Los Angeles Terminal": [
-      "Securing audio handshake with Sentinel AI voice module...",
-      "CRITICAL: Union dockworker disputes have initiated immediate walkouts at LA terminal blocks.",
-      "Container dwell rates are projecting to break 14 days. Safety stock buffers are entering depletion phases.",
-      "Action recommended: Redirect incoming container shipments north to Seattle and Tacoma ports."
-    ],
-    "Panama Canal Transit": [
-      "Securing audio handshake with Sentinel AI voice module...",
-      "Panama Canal Transit remains STABLE.",
-      "Water level regulations have stabilized daily booking transits to 24 hulls.",
-      "Standby alert state preserved for Central American supply lanes."
-    ]
-  };
-
-  const activeSpeechLines = voiceBriefings[selectedHotspot] || voiceBriefings["Suez Canal Corridor"];
-
-  useEffect(() => {
-    let interval: any;
-    if (isVoiceActive) {
-      interval = setInterval(() => {
-        setSpeechTimer(prev => {
-          if (prev < activeSpeechLines.length - 1) {
-            return prev + 1;
-          } else {
-            setIsVoiceActive(false);
-            return 0;
-          }
-        });
-      }, 4000);
-    } else {
-      setSpeechTimer(0);
-    }
-    return () => clearInterval(interval);
-  }, [isVoiceActive, selectedHotspot]);
-
+  const activeHotspotObj = criticalHotspots.find(h => h.name === selectedHotspot) || criticalHotspots[0] || { name: 'No live hotspot', status: 'UNAVAILABLE', details: 'Connect an operational data source to monitor hotspots.', traffic: 'Unavailable', risk: 'Unavailable', coords: { x: 0, y: 0 } };
+  const activeSpeechLines = [activeHotspotObj.name, activeHotspotObj.details];
+  useEffect(() => () => { window.speechSynthesis?.cancel(); }, [selectedHotspot]);
   const handleStartBriefing = () => {
-    setIsVoiceActive(true);
-    setSpeechTimer(0);
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const speech = new SpeechSynthesisUtterance(activeSpeechLines.join('. '));
+    speech.onend = () => setIsVoiceActive(false);
+    speech.onerror = () => setIsVoiceActive(false);
+    setIsVoiceActive(true); setSpeechTimer(1); window.speechSynthesis.speak(speech);
   };
-
-  const handleStopBriefing = () => {
-    setIsVoiceActive(false);
-    setSpeechTimer(0);
-  };
-
-  const activeHotspotObj = criticalHotspots.find(h => h.name === selectedHotspot) || criticalHotspots[0];
+  const handleStopBriefing = () => { window.speechSynthesis?.cancel(); setIsVoiceActive(false); setSpeechTimer(0); };
 
   return (
     <section
@@ -128,7 +83,7 @@ export default function GlobalIntelligence({ activeRole, onOpenAuth, onExplore, 
           <div>
             <div className="flex items-center space-x-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">THREAT MATRIX ACTIVE</span>
+              <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">THREAT MATRIX</span>
             </div>
             <h1 className="text-xl font-bold tracking-tight text-slate-100 uppercase font-sans">
               SentinelChain <span className="bg-clip-text text-transparent bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-400">Command Center</span>
@@ -304,7 +259,7 @@ export default function GlobalIntelligence({ activeRole, onOpenAuth, onExplore, 
             </div>
 
             <p className="text-xs text-slate-400 leading-relaxed font-sans">
-              Deploying our custom LLM speech synthesizer models to extract structural supply-chain insights. Listen to real-time risk briefings.
+              Listen to a briefing of the selected connected hotspot.
             </p>
 
             {/* Interactive Audio Spectrum/Wave Visualizer */}
@@ -380,13 +335,7 @@ export default function GlobalIntelligence({ activeRole, onOpenAuth, onExplore, 
               )}
 
               <button
-                onClick={() => {
-                  setIsVoiceActive(false);
-                  setTimeout(() => {
-                    setIsVoiceActive(true);
-                    setSpeechTimer(0);
-                  }, 200);
-                }}
+                onClick={handleStartBriefing}
                 className="p-2 rounded-lg bg-slate-950 hover:bg-slate-900 border border-slate-850 text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
                 title="Restart Audio"
               >
@@ -396,8 +345,8 @@ export default function GlobalIntelligence({ activeRole, onOpenAuth, onExplore, 
           </div>
 
           <div className="text-[10px] font-mono text-slate-500 leading-relaxed border-t border-slate-850/60 pt-4 mt-6">
-            <span className="block text-[8px] uppercase tracking-widest text-slate-500">Bedrock Neural Voice Core</span>
-            <span>Synthesizer Status: <span className="text-emerald-400">ONLINE (TTS_TLS_V2)</span></span>
+            <span className="block text-[8px] uppercase tracking-widest text-slate-500">Browser Speech Synthesis</span>
+            <span>Synthesizer Status: <span className="text-emerald-400">DEVICE AUDIO</span></span>
           </div>
         </div>
 

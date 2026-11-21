@@ -56,12 +56,7 @@ export default function AuthModal({ isOpen, onClose, activeRole, onSelectRole }:
   if (!isOpen) return null;
 
   const handleSsoClick = (role: IAMRole) => {
-    setIsSigningIn(true);
-    setTimeout(() => {
-      onSelectRole(role);
-      setIsSigningIn(false);
-      onClose();
-    }, 600);
+    if (role.type === activeRole.type) onClose();
   };
 
   return (
@@ -97,7 +92,7 @@ export default function AuthModal({ isOpen, onClose, activeRole, onSelectRole }:
             <div className="bg-slate-950/60 rounded-lg p-3 border border-slate-800/60 font-mono text-[10px] text-slate-400 space-y-1">
               <div className="flex justify-between">
                 <span>STS Token:</span>
-                <span className="text-sky-400">sts::123456...</span>
+                <span className="text-sky-400">Not exposed</span>
               </div>
               <div className="flex justify-between">
                 <span>Domain:</span>
@@ -134,7 +129,7 @@ export default function AuthModal({ isOpen, onClose, activeRole, onSelectRole }:
                       : "text-slate-400 border-transparent hover:text-slate-200"
                   }`}
                 >
-                  Direct Login
+                  Account Help
                 </button>
               </div>
 
@@ -147,8 +142,8 @@ export default function AuthModal({ isOpen, onClose, activeRole, onSelectRole }:
             {activeTab === "federated" && (
               <div className="space-y-3">
                 <div className="text-[10px] font-mono text-slate-400 uppercase tracking-widest mb-1.5 flex items-center justify-between">
-                  <span>Select Active IAM Role to Assume</span>
-                  <span className="text-amber-500 animate-pulse">● Live Provider Connection</span>
+                  <span>Application Role Permissions</span>
+                  <span className="text-amber-500 animate-pulse">● Assigned by Cognito</span>
                 </div>
                 
                 <div className="grid grid-cols-1 gap-2.5 max-h-[280px] overflow-y-auto pr-1">
@@ -158,7 +153,7 @@ export default function AuthModal({ isOpen, onClose, activeRole, onSelectRole }:
                       <button
                         key={role.type}
                         onClick={() => handleSsoClick(role)}
-                        disabled={isSigningIn}
+                        disabled={!isCurrent}
                         className={`w-full text-left p-3 rounded-xl border transition-all ${
                           isCurrent
                             ? "bg-sky-950/15 border-sky-500/50 shadow-md shadow-sky-950/25"
@@ -193,76 +188,16 @@ export default function AuthModal({ isOpen, onClose, activeRole, onSelectRole }:
             )}
 
             {/* TAB 2: SECRETS / DIRECT ACCESS KEY LOGIN */}
-            {activeTab === "secrets" && (
-              <div className="space-y-4 py-2">
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-widest mb-1.5">
-                      IAM Username / ARN
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 px-3 text-xs text-slate-300 font-mono focus:outline-none focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/20"
-                      />
-                    </div>
-                  </div>
+            {activeTab === "secrets" && <div className="text-sm text-slate-400 leading-relaxed">Authentication is managed by Amazon Cognito. Sign out to switch accounts. Administrators assign roles through Cognito groups; cloud credentials stay on the server.</div>}
 
-                  <div>
-                    <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-widest mb-1.5">
-                      SSO Passcode / Secret Key
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 px-3 pr-10 text-xs text-slate-300 font-mono focus:outline-none focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/20"
-                      />
-                      <button
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                      >
-                        {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-800/80 flex items-start space-x-2.5">
-                  <Key className="w-4 h-4 text-sky-400 mt-0.5 shrink-0" />
-                  <div className="text-[10px] text-slate-400 leading-relaxed">
-                    <span className="font-semibold text-slate-200">Local Secrets Manager:</span> This applet is securely configured with cloud credentials dynamically synced with AI Studio platform layers. Direct API Keys can be managed in <span className="font-mono text-sky-400">Settings &gt; Secrets</span> in the sidebar.
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => {
-                    setIsSigningIn(true);
-                    setTimeout(() => {
-                      setIsSigningIn(false);
-                      onSelectRole(IAM_ROLES[0]); // Default to Architect
-                      onClose();
-                    }, 500);
-                  }}
-                  disabled={isSigningIn}
-                  className="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold py-2 rounded-lg text-xs tracking-wide flex items-center justify-center space-x-2 transition-colors mt-2"
-                >
-                  <span>Authenticate Session</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            )}
           </div>
 
           <div className="text-[9px] text-slate-500 font-mono mt-6 flex justify-between items-center border-t border-slate-800/80 pt-4">
             <span className="flex items-center space-x-1.5">
               <CloudLightning className="w-3 h-3 text-sky-400" />
-              <span>TLS 1.3 SECURE CONNECTION</span>
+              <span>COGNITO USER POOL</span>
             </span>
-            <span>MFA STATE: ENABLED</span>
+            <span>MFA: Cognito policy</span>
           </div>
         </div>
       </motion.div>

@@ -11,6 +11,9 @@ export interface Recommendation {
 }
 
 export interface Disruption {
+  integrations?: Record<string, string>;
+  source?: string;
+  createdAt?: string;
   id?: string;
   headline: string;
   category: "News" | "Weather" | "Port" | "Supplier";

@@ -109,6 +109,9 @@ export default function BusinessImpact({ activeDisruption }: BusinessImpactProps
       className="min-h-screen flex flex-col justify-start items-center px-4 sm:px-6 py-20 w-full"
     >
       <div className="w-full max-w-5xl">
+        {!activeDisruption && <p role="status" className="text-amber-400 text-xs mb-4">Example scenario. Analyze an incident to display your results.</p>}
+        {activeDisruption?.integrations && <p className="text-slate-400 text-xs mb-4">{Object.entries(activeDisruption.integrations).map(([key,value]) => `${key}: ${value}`).join(' | ')}</p>}
+
         {/* Title / Controls Panel */}
         <div className="text-left mb-8 border-b border-slate-800/60 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>

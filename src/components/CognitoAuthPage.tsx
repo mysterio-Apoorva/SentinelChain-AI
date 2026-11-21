@@ -1,3 +1,4 @@
+import { authConfigured } from "../awsConfig";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -61,8 +62,8 @@ export default function CognitoAuthPage({ onLoginSuccess }: CognitoAuthPageProps
         setRememberMe(true);
       } else {
         // High-end default mock values
-        setEmail("sarah.jenkins@sentinelchain.ai");
-        setPassword("SecurePass123!");
+        setEmail("");
+        setPassword("");
       }
     }
   }, [mode]);
@@ -88,6 +89,7 @@ export default function CognitoAuthPage({ onLoginSuccess }: CognitoAuthPageProps
       return;
     }
 
+    if (!authConfigured) { setError("Cognito is not configured. Set the user pool and client ID to enable authentication."); return; }
     setIsLoading(true);
 
     try {
@@ -136,6 +138,7 @@ export default function CognitoAuthPage({ onLoginSuccess }: CognitoAuthPageProps
       return;
     }
 
+    if (!authConfigured) { setError("Cognito is not configured. Set the user pool and client ID to enable authentication."); return; }
     setIsLoading(true);
 
     try {
@@ -167,6 +170,7 @@ export default function CognitoAuthPage({ onLoginSuccess }: CognitoAuthPageProps
       return;
     }
 
+    if (!authConfigured) { setError("Cognito is not configured. Set the user pool and client ID to enable authentication."); return; }
     setIsLoading(true);
 
     try {
@@ -206,6 +210,7 @@ export default function CognitoAuthPage({ onLoginSuccess }: CognitoAuthPageProps
       return;
     }
 
+    if (!authConfigured) { setError("Cognito is not configured. Set the user pool and client ID to enable authentication."); return; }
     setIsLoading(true);
 
     try {
@@ -247,6 +252,7 @@ export default function CognitoAuthPage({ onLoginSuccess }: CognitoAuthPageProps
       return;
     }
 
+    if (!authConfigured) { setError("Cognito is not configured. Set the user pool and client ID to enable authentication."); return; }
     setIsLoading(true);
 
     try {

@@ -1,3 +1,4 @@
+import { runOperation } from "../services/api";
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -44,19 +45,17 @@ export default function Recommendations({ activeDisruption, onDeploySuccess }: R
     ]
   };
 
-  const handleDeployPlaybook = (title: string, reduction: number) => {
-    if (deployedPlaybooks.includes(title)) return;
-    
-    setDeployingId(title);
-    
-    // Simulate AWS cloud infrastructure dispatcher trigger
-    setTimeout(() => {
+  const [error, setError] = useState('');
+  const handleDeployPlaybook = async (title: string, reduction: number) => {
+    if (deployedPlaybooks.includes(title) || deployingId) return;
+    if (!activeDisruption) { setError('Analyze an incident before dispatching a playbook.'); return; }
+    setDeployingId(title); setError('');
+    try {
+      await runOperation('playbook', title, { incidentId: activeDisruption.id, transitSpeedBuffer, budgetCap });
       setDeployedPlaybooks(prev => [...prev, title]);
-      setDeployingId(null);
-      // Adjust reduction dynamically based on our interactive speed buffer modifiers
-      const customizedReduction = Math.round(reduction * (transitSpeedBuffer / 100));
-      onDeploySuccess(customizedReduction);
-    }, 1200);
+      onDeploySuccess(reduction);
+    } catch (error) { setError(error instanceof Error ? error.message : 'Dispatch failed.'); }
+    finally { setDeployingId(null); }
   };
 
   return (
@@ -65,6 +64,10 @@ export default function Recommendations({ activeDisruption, onDeploySuccess }: R
       className="min-h-screen flex flex-col justify-start items-center px-4 sm:px-6 py-20 w-full"
     >
       <div className="w-full max-w-5xl">
+        {error && <p role="alert" className="text-red-400 text-sm mb-4">{error}</p>}
+
+        {!activeDisruption && <p role="status" className="text-amber-400 text-xs mb-4">Example scenario. Analyze an incident to display your results.</p>}
+        {activeDisruption?.integrations && <p className="text-slate-400 text-xs mb-4">{Object.entries(activeDisruption.integrations).map(([key,value]) => `${key}: ${value}`).join(' | ')}</p>}
         {/* Title */}
         <div className="text-left mb-8 border-b border-slate-800/60 pb-5">
           <span className="text-xs font-mono text-sky-400 uppercase tracking-widest block mb-1">Stage VII — Operational Playbooks</span>
@@ -171,7 +174,7 @@ export default function Recommendations({ activeDisruption, onDeploySuccess }: R
                     ) : (
                       <span>STANDBY LOGISTICS RE-ROUTE</span>
                     )}
-                    <span className="block mt-0.5">TARGET API: COURIER_GATE_0x71</span>
+                    <span className="block mt-0.5">TARGET: OPERATIONS CONNECTOR</span>
                   </div>
 
                   <button
@@ -210,11 +213,11 @@ export default function Recommendations({ activeDisruption, onDeploySuccess }: R
         <div className="mt-6 bg-slate-950/80 border border-slate-850 rounded-2xl p-4.5 text-left font-mono text-[9px] w-full">
           <div className="flex items-center space-x-2 text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-900 pb-2">
             <CloudLightning className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="font-bold">Cryptographic Action Ledger (S3 Secure Vault)</span>
+            <span className="font-bold">Confirmed Operations</span>
           </div>
           
           <div className="space-y-1.5 text-slate-500 leading-relaxed">
-            <div>[ST-LOG] System sync verified. Connection pool with third-party carriers is active.</div>
+            <div>[ST-LOG] Actions require confirmation from the configured operations connector.</div>
             {deployedPlaybooks.length > 0 ? (
               deployedPlaybooks.map((p, idx) => {
                 const customizedReduction = Math.round(
@@ -222,7 +225,7 @@ export default function Recommendations({ activeDisruption, onDeploySuccess }: R
                 );
                 return (
                   <div key={idx} className="text-emerald-400">
-                    [STS-DISPATCH] SHA-256 Auth Signature: <span className="text-slate-400">0x9B1C...FF82</span> | Deployed Playbook: &apos;{p}&apos;. Offset parameter: -{customizedReduction}% risk. Transmitted signed carrier mandate.
+                    [STS-DISPATCH] Confirmed Playbook: &apos;{p}&apos;. Offset parameter: -{customizedReduction}% risk. Connector confirmed completion.
                   </div>
                 );
               })

@@ -1,9 +1,12 @@
+import { authService } from "../services/authService";
+import { useOperationalRows } from "../services/operationalData";
+import { apiRequest, runOperation } from "../services/api";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { 
+import {
   Home, Globe, Flame, Ship, Factory, Lightbulb, BarChart3, Mic, BellRing, Settings,
-  Play, Pause, ChevronRight, AlertTriangle, ShieldCheck, Key, Compass, ArrowUp, 
-  RefreshCw, Layers, TrendingUp, Cpu, User, Users, Lock, Anchor, Clock, 
+  Play, Pause, ChevronRight, AlertTriangle, ShieldCheck, Key, Compass, ArrowUp,
+  RefreshCw, Layers, TrendingUp, Cpu, User, Users, Lock, Anchor, Clock,
   CheckSquare, Search, Sparkles, Terminal, Database, Zap, FileText, AlertCircle, Check
 } from "lucide-react";
 import { IAMRole, Disruption } from "../types";
@@ -24,16 +27,17 @@ export function DashboardOverview({ activeRole, onNavigate, isAnalyzing, activeD
   const [currentTime, setCurrentTime] = useState("");
 
   useEffect(() => {
-    setCurrentTime(new Date().toLocaleTimeString());
-    const interval = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
+    setCurrentTime(new Date().toLocaleTimeString("en-GB", { timeZone: "UTC" }));
+    const interval = setInterval(() => setCurrentTime(new Date().toLocaleTimeString("en-GB", { timeZone: "UTC" })), 1000);
     return () => clearInterval(interval);
   }, []);
 
+  const shipments = useOperationalRows('shipments', [{ id: '' }]);
   const kpis = [
-    { label: "Aggregate Risk Score", value: "3.4 / 10", desc: "Low Volatility Peak", trend: "-0.4%", icon: ShieldCheck, color: "text-emerald-400" },
-    { label: "Active Tracked Routes", value: "148 Corridor Lines", desc: "8 Critical Ports Syncing", trend: "Stable", icon: Compass, color: "text-sky-400" },
-    { label: "Saved Outage Costs", value: "$1.84M USD", desc: "AI Pre-emptive rerouting", trend: "+$240k", icon: TrendingUp, color: "text-amber-400" },
-    { label: "Cognito User Session", value: "Active Token", desc: activeRole.title, trend: "Secure", icon: Key, color: "text-purple-400" }
+    { label: 'Incident Severity', value: activeDisruption?.severity || 'No incident', desc: 'Selected analysis', trend: 'Current', icon: ShieldCheck, color: 'text-emerald-400' },
+    { label: 'Tracked Shipments', value: String(shipments.length), desc: 'Connected data source', trend: 'Records', icon: Compass, color: 'text-sky-400' },
+    { label: 'Estimated Cost Increase', value: activeDisruption ? `${activeDisruption.impactCost}%` : 'Unavailable', desc: 'Model estimate', trend: 'Estimate', icon: TrendingUp, color: 'text-amber-400' },
+    { label: 'Cognito User Session', value: 'Active Token', desc: activeRole.title, trend: 'Signed in', icon: Key, color: 'text-purple-400' }
   ];
 
   return (
@@ -54,7 +58,7 @@ export function DashboardOverview({ activeRole, onNavigate, isAnalyzing, activeD
           <div className="text-sm font-bold text-sky-400">{currentTime || "00:00:00"}</div>
           <div className="text-[8px] text-emerald-500 mt-1 uppercase flex items-center justify-end space-x-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Telemetry Online</span>
+            <span>Session Active</span>
           </div>
         </div>
       </div>
@@ -95,7 +99,7 @@ export function DashboardOverview({ activeRole, onNavigate, isAnalyzing, activeD
 
           {/* Quick Navigate Bento Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-            <div 
+            <div
               onClick={() => onNavigate("live-risk-map")}
               className="bg-slate-950/80 hover:bg-slate-950 border border-slate-850 hover:border-sky-500/40 transition-all p-3.5 rounded-xl cursor-pointer group text-left"
             >
@@ -108,7 +112,7 @@ export function DashboardOverview({ activeRole, onNavigate, isAnalyzing, activeD
               </p>
             </div>
 
-            <div 
+            <div
               onClick={() => onNavigate("active-disruptions")}
               className="bg-slate-950/80 hover:bg-slate-950 border border-slate-850 hover:border-red-500/40 transition-all p-3.5 rounded-xl cursor-pointer group text-left"
             >
@@ -121,7 +125,7 @@ export function DashboardOverview({ activeRole, onNavigate, isAnalyzing, activeD
               </p>
             </div>
 
-            <div 
+            <div
               onClick={() => onNavigate("recovery-actions")}
               className="bg-slate-950/80 hover:bg-slate-950 border border-slate-850 hover:border-emerald-500/40 transition-all p-3.5 rounded-xl cursor-pointer group text-left"
             >
@@ -134,7 +138,7 @@ export function DashboardOverview({ activeRole, onNavigate, isAnalyzing, activeD
               </p>
             </div>
 
-            <div 
+            <div
               onClick={() => onNavigate("business-impact")}
               className="bg-slate-950/80 hover:bg-slate-950 border border-slate-850 hover:border-amber-500/40 transition-all p-3.5 rounded-xl cursor-pointer group text-left"
             >
@@ -152,7 +156,7 @@ export function DashboardOverview({ activeRole, onNavigate, isAnalyzing, activeD
             <span>COGNITO IDENTITY SERVICE v2.0</span>
             <span className="text-sky-400 flex items-center space-x-1">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>FedRAMP Compliance Certified</span>
+              <span>Cognito Session</span>
             </span>
           </div>
         </div>
@@ -182,7 +186,7 @@ export function DashboardOverview({ activeRole, onNavigate, isAnalyzing, activeD
                   <Terminal className="w-5 h-5" />
                 </div>
                 <div className="max-w-[200px] mx-auto">
-                  <span className="text-xs font-mono text-slate-300 uppercase font-semibold">VPC Buffer Standby</span>
+                  <span className="text-xs font-mono text-slate-300 uppercase font-semibold">Analysis Standby</span>
                   <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
                     Awaiting manual signal disruption trigger inside Incidents Console.
                   </p>
@@ -192,8 +196,8 @@ export function DashboardOverview({ activeRole, onNavigate, isAnalyzing, activeD
           </div>
 
           <div className="border-t border-slate-850/60 pt-3 mt-4 flex items-center justify-between text-[9px] font-mono text-slate-500">
-            <span>STATUS: S3_IDLE_BURST</span>
-            <span>SECURE AES_256</span>
+            <span>STATUS: AWAITING REPORT</span>
+            <span>SENTINELCHAIN</span>
           </div>
         </div>
       </div>
@@ -206,16 +210,16 @@ export function DashboardOverview({ activeRole, onNavigate, isAnalyzing, activeD
 // ----------------------------------------------------------------------
 export function LiveShipmentTracking() {
   const [search, setSearch] = useState("");
-  const shipments = [
+  const shipments = useOperationalRows("shipments", [
     { id: "SNT-9082", vessel: "Maersk Horizon", carrier: "APM-Maersk", route: "Suez -> Rotterdam Corridor", cargo: "Microchips & ASIC Boards", eta: "July 12, 2026", status: "Transit", delay: "None" },
     { id: "SNT-1102", vessel: "COSCO Nebula", carrier: "COSCO Group", route: "Shanghai -> Los Angeles", cargo: "Battery Packs & Gels", eta: "July 22, 2026", status: "Delayed", delay: "+10 Days" },
     { id: "SNT-4482", vessel: "Ever Albatross", carrier: "Evergreen Marine", route: "Panama Transit Corridor", cargo: "Automotive Steel Substrates", eta: "July 15, 2026", status: "Transit", delay: "None" },
     { id: "SNT-3304", vessel: "CMA CGM Aquila", carrier: "CMA CGM", route: "Suez -> Rotterdam Corridor", cargo: "Tier-2 Polymer Compounds", eta: "July 28, 2026", status: "Delayed", delay: "+12 Days" },
     { id: "SNT-7721", vessel: "One Crane", carrier: "Ocean Network Express", route: "Yokohama -> Seattle Dock", cargo: "Precision Tooling Die Sets", eta: "July 19, 2026", status: "Transit", delay: "None" }
-  ];
+  ]);
 
-  const filtered = shipments.filter(s => 
-    s.id.toLowerCase().includes(search.toLowerCase()) || 
+  const filtered = shipments.filter(s =>
+    s.id.toLowerCase().includes(search.toLowerCase()) ||
     s.vessel.toLowerCase().includes(search.toLowerCase()) ||
     s.cargo.toLowerCase().includes(search.toLowerCase())
   );
@@ -234,11 +238,11 @@ export function LiveShipmentTracking() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
           <div className="relative w-full sm:max-w-xs">
             <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by vessel, cargo, shipment ID..." 
+              placeholder="Search by vessel, cargo, shipment ID..."
               className="w-full bg-slate-950 border border-slate-850 rounded-lg py-1.5 pl-9 pr-3 text-xs text-slate-300 focus:outline-none focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/10 font-mono"
             />
           </div>
@@ -300,10 +304,10 @@ interface DelayedShipmentsProps {
 }
 
 export function DelayedShipments({ onNavigate }: DelayedShipmentsProps) {
-  const delays = [
+  const delays = useOperationalRows("delays", [
     { id: "SNT-1102", vessel: "COSCO Nebula", carrier: "COSCO Group", route: "Shanghai -> Los Angeles", cargo: "Battery Packs & Gels", eta: "July 22, 2026", cost: "$480,000", delay: "Dockworker strike at Los Angeles", risk: "Critical" },
     { id: "SNT-3304", vessel: "CMA CGM Aquila", carrier: "CMA CGM", route: "Suez -> Rotterdam Corridor", cargo: "Tier-2 Polymer Compounds", eta: "July 28, 2026", cost: "$210,000", delay: "Suez corridor container grounding delay", risk: "High" }
-  ];
+  ]);
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 text-left">
@@ -347,7 +351,7 @@ export function DelayedShipments({ onNavigate }: DelayedShipmentsProps) {
               </div>
             </div>
 
-            <button 
+            <button
               onClick={() => onNavigate("recovery-actions")}
               className="w-full py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/40 text-xs font-bold uppercase tracking-wider flex items-center justify-center space-x-2 transition-all cursor-pointer"
             >
@@ -365,13 +369,13 @@ export function DelayedShipments({ onNavigate }: DelayedShipmentsProps) {
 // 4. SUPPLIERS — SUPPLIER HEALTH
 // ----------------------------------------------------------------------
 export function SupplierHealth() {
-  const suppliers = [
+  const suppliers = useOperationalRows("suppliers", [
     { name: "Taiwan Micro-Semi Corp", region: "Hsinchu, Taiwan", category: "Microcontrollers", status: "Critical", score: "42%", leadTime: "+18 days", safetyStock: "14 days", backup: "Vietnam Assembly Facility B" },
     { name: "Suez Freight Logistics Ltd", region: "Port Said, Egypt", category: "Maritime Carrier", status: "Critical", score: "25%", leadTime: "+14 days", safetyStock: "3 days", backup: "Cape of Good Hope Route" },
     { name: "Rotterdam Stevedoring", region: "Rotterdam, NL", category: "Harbor Loading", status: "Stable", score: "98%", leadTime: "Normal", safetyStock: "45 days", backup: "Standby Carrier Pool Delta" },
     { name: "Euro-Chemicals Gmbh", region: "Ludwigshafen, Germany", category: "Chemical Solvents", status: "Warning", score: "74%", leadTime: "+4 days", safetyStock: "22 days", backup: "Sourcing Alternative USA" },
     { name: "Nippon Glass Fabricators", region: "Kyoto, Japan", category: "Substrates", status: "Stable", score: "96%", leadTime: "Normal", safetyStock: "30 days", backup: "Kyushu Mainland Plant" }
-  ];
+  ]);
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 text-left">
@@ -419,8 +423,8 @@ export function SupplierHealth() {
                     <td className="py-3 px-3 font-mono">
                       <div className="flex items-center space-x-2">
                         <div className="w-12 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full ${s.status === "Critical" ? "bg-red-500" : s.status === "Warning" ? "bg-amber-500" : "bg-emerald-500"}`} 
+                          <div
+                            className={`h-full ${s.status === "Critical" ? "bg-red-500" : s.status === "Warning" ? "bg-amber-500" : "bg-emerald-500"}`}
                             style={{ width: s.score }}
                           />
                         </div>
@@ -451,23 +455,29 @@ export function SupplierHealth() {
 // 5. SUPPLIERS — ALTERNATIVE SUPPLIERS
 // ----------------------------------------------------------------------
 export function AlternativeSuppliers() {
-  const backups = [
+  const backups = useOperationalRows("backups", [
     { target: "Taiwan Micro-Semi Corp", backup: "Vietnam Assembly Facility B", region: "Hanoi, Vietnam", reliability: "92%", premium: "1.12x Cost", onboarding: "Ready", active: false },
     { target: "Suez Freight Logistics Ltd", backup: "Cape of Good Hope Overland route", region: "South Africa Bypass", reliability: "85%", premium: "1.35x Cost", onboarding: "Ready", active: false },
     { target: "Euro-Chemicals Gmbh", backup: "Sourcing Alternative USA", region: "Texas, USA", reliability: "94%", premium: "1.08x Cost", onboarding: "Pending Review", active: false }
-  ];
+  ]);
 
   const [activeBackupStates, setActiveBackupStates] = useState<Record<number, boolean>>({});
 
-  const handleActivate = (idx: number) => {
-    setActiveBackupStates(prev => ({
-      ...prev,
-      [idx]: !prev[idx]
-    }));
+  const [actionError, setActionError] = useState('');
+  const [pendingAction, setPendingAction] = useState(false);
+  const handleActivate = async (idx: number) => {
+    if (pendingAction) return;
+    setPendingAction(true); setActionError('');
+    try {
+      await runOperation('supplier', backups[idx].backup, { activate: !activeBackupStates[idx] });
+      setActiveBackupStates(prev => ({ ...prev, [idx]: !prev[idx] }));
+    } catch (error) { setActionError(error instanceof Error ? error.message : 'Activation failed.'); }
+    finally { setPendingAction(false); }
   };
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 text-left">
+      {actionError && <p role="alert" className="text-red-400 text-sm">{actionError}</p>}
       <div className="border-b border-slate-800/60 pb-5">
         <span className="text-xs font-mono text-sky-400 uppercase tracking-widest block mb-1">Standby Pool</span>
         <h2 className="text-2xl font-bold tracking-tight text-slate-100 uppercase">Alternative Suppliers Directory</h2>
@@ -506,8 +516,8 @@ export function AlternativeSuppliers() {
                       <button
                         onClick={() => handleActivate(idx)}
                         className={`px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase transition-all flex items-center space-x-1.5 ml-auto cursor-pointer ${
-                          isActive 
-                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" 
+                          isActive
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
                             : "bg-slate-950 hover:bg-slate-900 border border-slate-850 text-slate-300"
                         }`}
                       >
@@ -583,8 +593,8 @@ export function RouteOptimization() {
           <button
             onClick={() => setSelectedBypass("cape")}
             className={`w-full p-3 rounded-xl border text-left transition-all flex flex-col ${
-              selectedBypass === "cape" 
-                ? "bg-sky-500/10 border-sky-500 text-sky-400 font-bold" 
+              selectedBypass === "cape"
+                ? "bg-sky-500/10 border-sky-500 text-sky-400 font-bold"
                 : "bg-slate-950/60 border-slate-850 text-slate-400 hover:border-slate-800"
             }`}
           >
@@ -594,8 +604,8 @@ export function RouteOptimization() {
           <button
             onClick={() => setSelectedBypass("rail")}
             className={`w-full p-3 rounded-xl border text-left transition-all flex flex-col ${
-              selectedBypass === "rail" 
-                ? "bg-sky-500/10 border-sky-500 text-sky-400 font-bold" 
+              selectedBypass === "rail"
+                ? "bg-sky-500/10 border-sky-500 text-sky-400 font-bold"
                 : "bg-slate-950/60 border-slate-850 text-slate-400 hover:border-slate-800"
             }`}
           >
@@ -605,8 +615,8 @@ export function RouteOptimization() {
           <button
             onClick={() => setSelectedBypass("seattle")}
             className={`w-full p-3 rounded-xl border text-left transition-all flex flex-col ${
-              selectedBypass === "seattle" 
-                ? "bg-sky-500/10 border-sky-500 text-sky-400 font-bold" 
+              selectedBypass === "seattle"
+                ? "bg-sky-500/10 border-sky-500 text-sky-400 font-bold"
                 : "bg-slate-950/60 border-slate-850 text-slate-400 hover:border-slate-800"
             }`}
           >
@@ -652,20 +662,29 @@ export function RouteOptimization() {
 // 7. AI RECOMMENDATIONS — INVENTORY SUGGESTIONS
 // ----------------------------------------------------------------------
 export function InventorySuggestions() {
-  const suggestions = [
+  const suggestions = useOperationalRows("suggestions", [
     { component: "ASIC Microcontrollers", current: "14 Days", recommended: "45 Days", adjustment: "+31 Days", cost: "+$24k Buffer Fee", status: "Depleted" },
     { component: "Lithium Solvent Gels", current: "22 Days", recommended: "35 Days", adjustment: "+13 Days", cost: "+$12k Buffer Fee", status: "Depleted" },
     { component: "Fiberglass Substrates", current: "30 Days", recommended: "30 Days", adjustment: "0 Days", cost: "No change", status: "Optimal" }
-  ];
+  ]);
 
   const [approvedList, setApprovedList] = useState<Record<number, boolean>>({});
 
-  const handleApprove = (idx: number) => {
-    setApprovedList(prev => ({ ...prev, [idx]: true }));
+  const [actionError, setActionError] = useState('');
+  const [pendingAction, setPendingAction] = useState(false);
+  const handleApprove = async (idx: number) => {
+    if (pendingAction) return;
+    setPendingAction(true); setActionError('');
+    try {
+      await runOperation('inventory', suggestions[idx].component, { recommended: suggestions[idx].recommended });
+      setApprovedList(prev => ({ ...prev, [idx]: true }));
+    } catch (error) { setActionError(error instanceof Error ? error.message : 'Approval failed.'); }
+    finally { setPendingAction(false); }
   };
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 text-left">
+      {actionError && <p role="alert" className="text-red-400 text-sm">{actionError}</p>}
       <div className="border-b border-slate-800/60 pb-5">
         <span className="text-xs font-mono text-sky-400 uppercase tracking-widest block mb-1">Stock Optimization</span>
         <h2 className="text-2xl font-bold tracking-tight text-slate-100 uppercase">AI Inventory Suggestions</h2>
@@ -734,14 +753,14 @@ export function InventorySuggestions() {
 // 8. ANALYTICS — RISK TRENDS
 // ----------------------------------------------------------------------
 export function RiskTrends() {
-  const trendData = [
+  const trendData = useOperationalRows("trendData", [
     { month: "Jan", baseline: 25, current: 28 },
     { month: "Feb", baseline: 22, current: 34 },
     { month: "Mar", baseline: 30, current: 42 },
     { month: "Apr", baseline: 28, current: 64 },
     { month: "May", baseline: 35, current: 50 },
     { month: "Jun", baseline: 40, current: 38 }
-  ];
+  ]);
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 text-left">
@@ -785,19 +804,43 @@ export function RiskTrends() {
 // ----------------------------------------------------------------------
 // 9. ANALYTICS — REPORTS
 // ----------------------------------------------------------------------
-export function Reports() {
+export function Reports({ activeDisruption }: { activeDisruption: Disruption | null }) {
+  const [reportError, setReportError] = useState("");
   const [downloading, setDownloading] = useState(false);
 
-  const handleDownload = () => {
-    setDownloading(true);
-    setTimeout(() => {
-      setDownloading(false);
-      alert("Report compiled and ready for transport (JSON/CSV manifest simulation complete).");
-    }, 2000);
+  const handleDownload = async () => {
+    setDownloading(true); setReportError("");
+    try {
+      const { jsPDF } = await import('jspdf');
+      const pdf = new jsPDF();
+      let y = 20;
+      const write = (text: string) => {
+        for (const line of pdf.splitTextToSize(text, 175)) {
+          if (y > 275) { pdf.addPage(); y = 20; }
+          pdf.text(line, 18, y); y += 6;
+        }
+        y += 4;
+      };
+      pdf.setFontSize(16); write('SentinelChain Executive Posture'); pdf.setFontSize(10);
+      write(`Generated: ${new Date().toISOString()}`);
+      if (activeDisruption) {
+        write(activeDisruption.headline);
+        write(`Source: ${activeDisruption.source || 'user report'} | Severity: ${activeDisruption.severity}`);
+        write('Model estimates; validate against operational records before execution.');
+        write(`Inventory: ${activeDisruption.impactInventory}% | Cost increase: ${activeDisruption.impactCost}%`);
+        write(activeDisruption.impactDeliveries);
+        activeDisruption.reasoning.forEach(write);
+        activeDisruption.recommendations.forEach(r => write(`${r.title}: ${r.description} | Cost: ${r.cost} | Estimated reduction: ${r.reduction}%`));
+        write(`Integration results: ${JSON.stringify(activeDisruption.integrations || {})}`);
+      } else write('No incident has been analyzed in this session. No operational exposure figures are available.');
+      pdf.save('sentinelchain-executive-posture.pdf');
+    } catch { setReportError('The report could not be generated. Please retry.'); }
+    finally { setDownloading(false); }
   };
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 text-left">
+      {reportError && <p role="alert" className="text-red-400 text-sm">{reportError}</p>}
       <div className="border-b border-slate-800/60 pb-5">
         <span className="text-xs font-mono text-sky-400 uppercase tracking-widest block mb-1">Corporate Exporter</span>
         <h2 className="text-2xl font-bold tracking-tight text-slate-100 uppercase">Generate Logistics Exposure Report</h2>
@@ -813,12 +856,12 @@ export function Reports() {
             <span className="text-xs font-bold uppercase tracking-wide">SentinelChain Executive Posture.pdf</span>
           </div>
           <p className="text-xs text-slate-400 font-sans leading-relaxed">
-            Contains structured AWS Lambda log indexes, S3 ingress events, Bedrock token extractions, and regional hotspot coefficients formatted for executive presentations.
+            Exports the selected incident, estimated business impact, reasoning, recommendations and integration results.
           </p>
           <div className="bg-slate-950 p-3 rounded-lg border border-slate-850 font-mono text-[9px] text-slate-500 space-y-1">
-            <div>SIZE: <span className="text-slate-300">4.82 MB</span></div>
+            <div>SIZE: <span className="text-slate-300">Calculated on export</span></div>
             <div>COMPILATION STATUS: <span className="text-emerald-400">READY</span></div>
-            <div>VPC HANDSHAKE: <span className="text-slate-300">SECURE COGNITO ENCRYPTED</span></div>
+            <div>VPC HANDSHAKE: <span className="text-slate-300">SESSION EXPORT</span></div>
           </div>
         </div>
 
@@ -847,20 +890,22 @@ export function Reports() {
 // ----------------------------------------------------------------------
 // 10. AI ASSISTANT — VOICE ASSISTANT
 // ----------------------------------------------------------------------
-export function VoiceAssistant() {
+export function VoiceAssistant({ activeDisruption }: { activeDisruption: Disruption | null }) {
   const [isVocalizing, setIsVocalizing] = useState(false);
   const [lines, setLines] = useState<string[]>([
-    "Initial connection made to Bedrock voice engine.",
+    "Browser speech synthesis ready.",
     "Ready for verbal briefing mandate..."
   ]);
 
+  useEffect(() => () => { window.speechSynthesis?.cancel(); }, []);
   const handleVerbalBriefing = () => {
-    setIsVocalizing(true);
-    setLines(prev => [...prev, "Vocalizing real-time regional threat briefing..."]);
-    setTimeout(() => {
-      setLines(prev => [...prev, "Suez Canal Corridor alert read out complete. Cape alternative active."]);
-      setIsVocalizing(false);
-    }, 4000);
+    if (!('speechSynthesis' in window)) { setLines(prev => [...prev, 'This browser does not support speech synthesis.']); return; }
+    const briefing = activeDisruption ? `${activeDisruption.headline}. ${activeDisruption.impactDeliveries} ${activeDisruption.reasoning.join('. ')}` : 'No incident is selected. Analyze a disruption to hear its briefing.';
+    const utterance = new SpeechSynthesisUtterance(briefing);
+    utterance.onend = () => { setIsVocalizing(false); setLines(prev => [...prev, 'Briefing complete.']); };
+    utterance.onerror = () => { setIsVocalizing(false); setLines(prev => [...prev, 'Audio playback failed. Check browser audio permissions.']); };
+    setLines(prev => [...prev, briefing]); setIsVocalizing(true);
+    window.speechSynthesis.cancel(); window.speechSynthesis.speak(utterance);
   };
 
   return (
@@ -869,7 +914,7 @@ export function VoiceAssistant() {
         <span className="text-xs font-mono text-sky-400 uppercase tracking-widest block mb-1">Verbal briefings</span>
         <h2 className="text-2xl font-bold tracking-tight text-slate-100 uppercase">Cognitive Voice Assistant</h2>
         <p className="text-slate-400 text-xs mt-2 max-w-2xl leading-relaxed">
-          Initiate synthetic vocal handshakes to broadcast operational threat summaries directly over harbor secure lines.
+          Listen to the selected incident briefing through your device audio.
         </p>
       </div>
 
@@ -900,8 +945,8 @@ export function VoiceAssistant() {
           <div className="space-y-3">
             <span className="text-slate-500 block uppercase">Synthesizer Core Specs</span>
             <div className="space-y-1 text-slate-300">
-              <div>ENGINE: <span className="text-sky-400">BEDROCK_VOICE_v2</span></div>
-              <div>LATENCY: <span className="text-slate-300">14 ms</span></div>
+              <div>ENGINE: <span className="text-sky-400">BROWSER_SPEECH</span></div>
+              <div>LATENCY: <span className="text-slate-300">Device dependent</span></div>
               <div>SSO: <span className="text-slate-300">ACTIVE IAM SESSION</span></div>
             </div>
 
@@ -932,27 +977,22 @@ export function VoiceAssistant() {
 // ----------------------------------------------------------------------
 // 11. AI ASSISTANT — AI CHAT
 // ----------------------------------------------------------------------
-export function AiChat() {
+export function AiChat({ activeDisruption }: { activeDisruption: Disruption | null }) {
+  const [sending, setSending] = useState(false);
   const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([
     { role: "assistant", content: "Greetings. I am Sentinel AI. How can I help secure your supply lines today?" }
   ]);
   const [input, setInput] = useState("");
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    const userMsg = input;
-    setMessages(prev => [...prev, { role: "user", content: userMsg }]);
-    setInput("");
-
-    setTimeout(() => {
-      let reply = "I am processing that logistical parameter. Let's analyze risk indexes to suggest optimal backups.";
-      if (userMsg.toLowerCase().includes("suez")) {
-        reply = "Suez Canal Corridor is currently bottlenecked. Recommending immediate diversion via Cape of Good Hope, protecting SLA buffers.";
-      } else if (userMsg.toLowerCase().includes("la") || userMsg.toLowerCase().includes("strike")) {
-        reply = "Los Angeles Terminal labor strike is active. Suggesting dynamic freight redirection north to Seattle hubs.";
-      }
-      setMessages(prev => [...prev, { role: "assistant", content: reply }]);
-    }, 1200);
+  const handleSend = async () => {
+    if (!input.trim() || sending) return;
+    const userMsg = input.trim();
+    setMessages(prev => [...prev, { role: 'user', content: userMsg }]); setInput(''); setSending(true);
+    try {
+      const result = await apiRequest('chat', { message: userMsg, context: { incident: activeDisruption, conversation: messages.slice(-8) } });
+      setMessages(prev => [...prev, { role: 'assistant', content: result.reply }]);
+    } catch (error) { setMessages(prev => [...prev, { role: 'assistant', content: error instanceof Error ? error.message : 'Chat unavailable.' }]); }
+    finally { setSending(false); }
   };
 
   return (
@@ -969,14 +1009,14 @@ export function AiChat() {
         {/* Messages List */}
         <div className="flex-1 overflow-y-auto space-y-3.5 pr-2 mb-4 custom-scrollbar">
           {messages.map((m, idx) => (
-            <div 
-              key={idx} 
+            <div
+              key={idx}
               className={`flex flex-col space-y-1 max-w-[80%] ${m.role === "user" ? "ml-auto text-right" : "mr-auto text-left"}`}
             >
               <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest">{m.role.toUpperCase()}</span>
               <div className={`p-3 rounded-2xl text-xs font-sans leading-relaxed ${
-                m.role === "user" 
-                  ? "bg-sky-500/10 text-sky-300 border border-sky-500/20 rounded-tr-none" 
+                m.role === "user"
+                  ? "bg-sky-500/10 text-sky-300 border border-sky-500/20 rounded-tr-none"
                   : "bg-slate-950/80 text-slate-200 border border-slate-850 rounded-tl-none"
               }`}>
                 {m.content}
@@ -987,16 +1027,17 @@ export function AiChat() {
 
         {/* Input Form */}
         <div className="flex items-center space-x-2 border-t border-slate-850/60 pt-3">
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            placeholder="Query about Suez bottlenecks, alternate routes, or safety stock guidelines..." 
+            placeholder="Query about Suez bottlenecks, alternate routes, or safety stock guidelines..."
             className="flex-1 bg-slate-950 border border-slate-850 rounded-xl py-2 px-4 text-xs text-slate-300 focus:outline-none focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/10 font-sans"
           />
-          <button 
+          <button
             onClick={handleSend}
+            disabled={sending || !input.trim()} aria-label="Send message"
             className="p-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold uppercase tracking-wider flex items-center justify-center shrink-0 cursor-pointer shadow-md shadow-sky-500/10"
           >
             <Sparkles className="w-4 h-4" />
@@ -1046,11 +1087,11 @@ export function Profile({ activeRole, onOpenAuth }: ProfileProps) {
               </div>
               <div className="flex justify-between border-b border-slate-850 pb-1 text-slate-400">
                 <span>Session ID Key:</span>
-                <span className="text-slate-300">sso-session-9082-aws-cognito</span>
+                <span className="text-slate-300">Verified on API requests</span>
               </div>
               <div className="flex justify-between border-b border-slate-850 pb-1 text-slate-400">
                 <span>VPC Tunnel Routing:</span>
-                <span className="text-slate-300">10.142.0.42 (Internal Gateway)</span>
+                <span className="text-slate-300">Not exposed</span>
               </div>
             </div>
           </div>
@@ -1060,7 +1101,7 @@ export function Profile({ activeRole, onOpenAuth }: ProfileProps) {
             className="w-full py-2.5 rounded-xl bg-slate-950 hover:bg-slate-900 text-slate-300 border border-slate-850 text-xs font-bold uppercase tracking-wider flex items-center justify-center space-x-2 transition-all cursor-pointer"
           >
             <Lock className="w-3.5 h-3.5 text-sky-400" />
-            <span>Switch IAM / SSO Profiles</span>
+            <span>View Role Permissions</span>
           </button>
         </div>
 
@@ -1068,10 +1109,11 @@ export function Profile({ activeRole, onOpenAuth }: ProfileProps) {
           <div className="space-y-2.5">
             <span className="text-slate-500 block uppercase">Audit Compliance Log</span>
             <div className="bg-slate-900/50 p-3 rounded border border-slate-850 text-[9px] text-slate-400 space-y-1 h-36 overflow-y-auto">
-              <div>[05:01:22] - Authorized session via Amazon Cognito</div>
-              <div>[05:01:23] - Assumed role: {activeRole.title}</div>
-              <div>[05:02:11] - Fetched encrypted telemetry buffer indices</div>
-              <div>[05:02:42] - Verified IAM compliance signatures</div>
+              <div>Role: {activeRole.title}. Server checks Cognito claims for each operation.</div>
+
+
+
+
             </div>
           </div>
         </div>
@@ -1089,10 +1131,8 @@ interface CognitoLoginProps {
 }
 
 export function CognitoLogin({ onOpenAuth, activeRole }: CognitoLoginProps) {
-  const [cognitoUser, setCognitoUser] = useState<{ name: string; email: string; company: string; role: string } | null>(() => {
-    const saved = localStorage.getItem("sentinel_cognito_session");
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [cognitoUser, setCognitoUser] = useState<{ name: string; email: string; company: string; role: string } | null>(null);
+  useEffect(() => { authService.getCurrentUser().then(setCognitoUser); }, []);
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 text-left">
@@ -1112,9 +1152,9 @@ export function CognitoLogin({ onOpenAuth, activeRole }: CognitoLoginProps) {
               <span className="text-xs font-bold uppercase tracking-wide">Cognito Federated SSO Session</span>
             </div>
             <p className="text-xs text-slate-400 font-sans leading-relaxed">
-              Your current federated session is fully authenticated via Cognito User Pool <span className="font-mono text-sky-400">us-east-1_SentChainUser</span>.
+              Your current federated session is fully authenticated via Cognito User Pool <span className="font-mono text-sky-400">{import.meta.env.VITE_COGNITO_USER_POOL_ID || "Not configured"}</span>.
             </p>
-            
+
             {cognitoUser && (
               <div className="mt-4 pt-4 border-t border-slate-800/60 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div>
@@ -1139,33 +1179,35 @@ export function CognitoLogin({ onOpenAuth, activeRole }: CognitoLoginProps) {
 
           <div className="pt-4 border-t border-slate-850/65 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <p className="text-[10px] text-slate-500 font-mono leading-tight">
-              Active profile role assumed in AWS Security Token Service: <span className="text-sky-400 font-semibold">{activeRole.title}</span>.
+              Current application role: <span className="text-sky-400 font-semibold">{activeRole.title}</span>.
             </p>
             <button
               onClick={onOpenAuth}
               className="px-4 py-2 rounded-xl bg-slate-950 hover:bg-slate-900 border border-slate-800 text-white text-[11px] font-bold uppercase tracking-wider flex items-center space-x-2 transition-all shrink-0 cursor-pointer"
             >
               <Lock className="w-3.5 h-3.5 text-sky-400" />
-              <span>STS Role Assumer</span>
+              <span>View Permissions</span>
             </button>
           </div>
         </div>
 
         <div className="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-5 text-left flex flex-col justify-between font-mono text-[10px]">
           <div className="space-y-3">
-            <span className="text-slate-500 block uppercase tracking-wider">Cognito STS Audit log</span>
+            <span className="text-slate-500 block uppercase tracking-wider">Session information</span>
             <div className="bg-slate-900/50 p-3 rounded border border-slate-850 text-[9px] text-slate-400 space-y-1.5 h-44 overflow-y-auto">
-              <div>[05:01:22] - Cognito Session: init handshake</div>
-              <div>[05:01:23] - Token verify: SUCCESS (JWT SHA-256)</div>
+              <div>Signed in as {cognitoUser?.email || "Loading session..."}</div>
+              <div>Group: {cognitoUser?.role || "Loading..."}</div>
+
+
               {cognitoUser && (
                 <>
-                  <div>[05:01:24] - Subject: {cognitoUser.email}</div>
-                  <div>[05:01:24] - Claims: group={cognitoUser.role}</div>
+
+
                 </>
               )}
-              <div>[05:01:25] - Assumed role: {activeRole.title}</div>
-              <div>[05:02:11] - Fetched encrypted telemetry buffer</div>
-              <div>[05:02:42] - Verified IAM compliance signatures</div>
+
+
+
             </div>
           </div>
         </div>
